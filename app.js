@@ -8,14 +8,15 @@ if (tg) {
 
 // --- Элементы DOM ---
 const chooseTourBtn = document.getElementById('chooseTourBtn');
-const adminPanelBtn = document.getElementById('adminPanelBtn');
+const myBookingsBtn = document.getElementById('myBookingsBtn');
+const adminLoginBtn = document.getElementById('adminLoginBtn');
 const greetingMessage = document.getElementById('greetingMessage');
 const monthYear = document.getElementById('monthYear');
 const daysGrid = document.getElementById('daysGrid');
 const prevMonthBtn = document.getElementById('prevMonth');
 const nextMonthBtn = document.getElementById('nextMonth');
 const toursList = document.getElementById('toursList');
-const adminToursList = document.getElementById('adminToursList');
+const myBookingsList = document.getElementById('myBookingsList');
 const tourInfo = document.getElementById('tourInfo');
 const tourIdInput = document.getElementById('tourId');
 const maxSpotsInput = document.getElementById('maxSpots');
@@ -27,55 +28,56 @@ const commentInput = document.getElementById('comment');
 const form = document.getElementById('bookingFormInner');
 const statusDiv = document.getElementById('statusMessage');
 
-// Элементы админ-панели
+// Админ-элементы
+const adminDate = document.getElementById('adminDate');
+const adminTime = document.getElementById('adminTime');
+const adminRoute = document.getElementById('adminRoute');
+const adminMaxSpots = document.getElementById('adminMaxSpots');
+const adminPrice = document.getElementById('adminPrice');
+const adminDescription = document.getElementById('adminDescription');
+const adminMapUrl = document.getElementById('adminMapUrl');
 const addTourBtn = document.getElementById('addTourBtn');
-const tourFormScreen = document.getElementById('tourFormScreen');
-const tourFormTitle = document.getElementById('tourFormTitle');
-const tourForm = document.getElementById('tourForm');
-const editTourIdInput = document.getElementById('editTourId');
-const tourDateInput = document.getElementById('tourDate');
-const tourTimeInput = document.getElementById('tourTime');
-const tourRouteInput = document.getElementById('tourRoute');
-const tourMaxSpotsInput = document.getElementById('tourMaxSpots');
-const tourPriceInput = document.getElementById('tourPrice');
-const tourDurationInput = document.getElementById('tourDuration');
-const tourDescInput = document.getElementById('tourDesc');
-const tourMapInput = document.getElementById('tourMap');
-const tourFormStatus = document.getElementById('tourFormStatus');
+const adminToursList = document.getElementById('adminToursList');
 
 // --- Состояние ---
 let currentUser = tg?.initDataUnsafe?.user || null;
-let currentUserId = currentUser?.id ? String(currentUser.id) : null;
 let tours = [];
 let toursByDate = {};
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
-let isAdmin = false;
+const ADMIN_PASSWORD = 'admin123'; // ⚠️ ЗАМЕНИТЕ НА СВОЙ ПАРОЛЬ
+
+// --- Вспомогательные функции ---
+function getToday() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function formatDateForDisplay(dateStr) {
+  const [year, month, day] = dateStr.split('-');
+  return `${day}.${month}.${year}`;
+}
+
+function isDateInPast(dateStr) {
+  return dateStr < getToday();
+}
+
+function daysUntil(dateStr) {
+  const today = new Date();
+  const target = new Date(dateStr);
+  const diff = target - today;
+  return Math.ceil(diff / (1000 * 60 * 60 * 24));
+}
 
 // --- Показ экранов ---
 function showScreen(screenName) {
-  const screens = ['greetingScreen', 'calendarScreen', 'toursScreen', 'bookingForm', 'adminPanel', 'tourFormScreen'];
+  const screens = ['greetingScreen', 'calendarScreen', 'toursScreen', 'bookingForm', 'myBookingsScreen', 'adminScreen'];
   screens.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = (id === screenName) ? 'block' : 'none';
   });
 }
 
-// --- Проверка, является ли пользователь администратором ---
-function checkAdmin() {
-  if (!currentUserId) return;
-  const adminsRef = database.ref('admins/' + currentUserId);
-  adminsRef.once('value').then(snapshot => {
-    isAdmin = snapshot.val() === true;
-    if (isAdmin && adminPanelBtn) {
-      adminPanelBtn.style.display = 'block';
-    }
-  }).catch(err => {
-    console.error('Ошибка проверки администратора:', err);
-  });
-}
-
-// --- Загрузка туров ---
+// ===================== ЗАГРУЗКА ТУРОВ =====================
 function loadTours() {
   console.log('🔄 loadTours вызвана');
   const toursRef = database.ref('tours');
@@ -83,11 +85,7 @@ function loadTours() {
     const data = snapshot.val();
     console.log('📦 Данные из Firebase (tours):', data);
     if (data) {
-      tours = Object.keys(data).map(key => {
-        const tour = data[key];
-        return { id: key, ...tour };
-      });
-      console.log('📋 Массив туров:', tours);
+      tours = Object.keys(data).map(key => ({ id: key, ...data[key] }));
       toursByDate = tours.reduce((acc, tour) => {
         const date = tour.date;
         if (!date) return acc;
@@ -97,7 +95,6 @@ function loadTours() {
       }, {});
       console.log('📅 Сгруппировано по дате:', toursByDate);
       renderCalendar();
-      if (isAdmin) renderAdminTours();
     } else {
       const container = document.getElementById('calendarContainer');
       if (container) container.innerHTML = '<p style="text-align:center;">Пока нет доступных прогулок. Загляните позже.</p>';
@@ -109,7 +106,7 @@ function loadTours() {
   });
 }
 
-// --- Рендер календаря ---
+// ===================== КАЛЕНДАРЬ =====================
 function renderCalendar() {
   if (!monthYear || !daysGrid) return;
   console.log('🔄 Рендерим календарь для', currentMonth, currentYear);
@@ -135,7 +132,7 @@ function renderCalendar() {
   }
 
   const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-  const today = new Date().toISOString().split('T')[0];
+  const today = getToday();
 
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
@@ -162,7 +159,7 @@ function renderCalendar() {
   }
 }
 
-// --- Показать туры для выбранной даты (клиентская часть) ---
+// ===================== ТУРЫ НА ДАТУ =====================
 function showToursForDate(date) {
   if (!toursList) return;
   toursList.innerHTML = '';
@@ -196,7 +193,7 @@ function showToursForDate(date) {
   showScreen('toursScreen');
 }
 
-// --- Показать форму бронирования ---
+// ===================== ФОРМА БРОНИРОВАНИЯ =====================
 function showBookingForm(tour) {
   tourInfo.textContent = `${tour.route}, ${tour.date} в ${tour.time}`;
   tourIdInput.value = tour.id;
@@ -212,7 +209,6 @@ function showBookingForm(tour) {
   showScreen('bookingForm');
 }
 
-// --- Отправка бронирования ---
 form.addEventListener('submit', function(e) {
   e.preventDefault();
 
@@ -283,7 +279,7 @@ form.addEventListener('submit', function(e) {
     });
 });
 
-// --- Экран подтверждения ---
+// ===================== ПОДТВЕРЖДЕНИЕ =====================
 function showConfirmation(booking) {
   const tour = tours.find(t => t.id === booking.tourId);
   const routeDesc = tour?.routeDescription || '';
@@ -309,183 +305,224 @@ function showConfirmation(booking) {
   if (app) app.appendChild(confirmScreen);
 }
 
-// --- Навигация по календарю ---
+// ===================== МОИ ПРОГУЛКИ =====================
+async function loadMyBookings() {
+  const phone = prompt('Введите номер телефона, который вы указывали при бронировании:', '');
+  if (!phone) return;
+
+  try {
+    const snapshot = await database.ref('bookings').orderByChild('clientPhone').equalTo(phone).once('value');
+    const data = snapshot.val();
+    if (!data) {
+      myBookingsList.innerHTML = '<p style="text-align:center;">У вас нет бронирований.</p>';
+      showScreen('myBookingsScreen');
+      return;
+    }
+    const bookings = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+    // Сортируем: сначала предстоящие (по дате и времени)
+    bookings.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    renderMyBookings(bookings, phone);
+    showScreen('myBookingsScreen');
+  } catch (err) {
+    console.error('Ошибка загрузки бронирований:', err);
+    myBookingsList.innerHTML = '<p style="color:red;">Ошибка загрузки</p>';
+    showScreen('myBookingsScreen');
+  }
+}
+
+function renderMyBookings(bookings, phone) {
+  myBookingsList.innerHTML = '';
+  const today = getToday();
+  let hasUpcoming = false;
+
+  bookings.forEach(booking => {
+    const isPast = booking.date < today;
+    const daysLeft = daysUntil(booking.date);
+    const canCancel = !isPast && daysLeft >= 2;
+
+    if (!isPast) hasUpcoming = true;
+
+    const card = document.createElement('div');
+    card.className = 'booking-card';
+    const statusLabel = isPast ? '🟢 Прошла' : (daysLeft <= 1 ? '🟡 Завтра' : '🔵 Предстоит');
+    card.innerHTML = `
+      <h3>${booking.route}</h3>
+      <p><strong>${formatDateForDisplay(booking.date)}</strong> в ${booking.time}</p>
+      <p>Сапов: ${booking.boardsCount} | Сумма: ${booking.price} руб.</p>
+      <p>Статус: ${statusLabel}</p>
+      ${booking.comment ? `<p>💬 ${booking.comment}</p>` : ''}
+      ${!isPast && canCancel ? `<button class="cancel-btn" data-id="${booking.id}">Отменить (ещё ${daysLeft} дня)</button>` : ''}
+      ${!isPast && !canCancel && daysLeft < 2 && daysLeft >= 0 ? `<p style="color:#856404;">⏳ Отмена менее чем за 2 дня невозможна</p>` : ''}
+    `;
+    const cancelBtn = card.querySelector('.cancel-btn');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (confirm('Вы уверены, что хотите отменить бронирование?')) {
+          cancelBooking(booking.id, booking.tourId, booking.boardsCount, phone);
+        }
+      });
+    }
+    myBookingsList.appendChild(card);
+  });
+
+  if (!hasUpcoming) {
+    const msg = document.createElement('p');
+    msg.style.textAlign = 'center';
+    msg.style.marginTop = '10px';
+    msg.style.color = '#888';
+    msg.textContent = 'У вас нет предстоящих прогулок.';
+    myBookingsList.appendChild(msg);
+  }
+}
+
+function cancelBooking(bookingId, tourId, boardsCount, phone) {
+  const bookingRef = database.ref(`bookings/${bookingId}`);
+  bookingRef.remove()
+    .then(() => {
+      // Уменьшаем booked в туре
+      const tourRef = database.ref(`tours/${tourId}/booked`);
+      tourRef.transaction(current => {
+        return (current || 0) - boardsCount;
+      });
+      alert('✅ Бронирование отменено');
+      // Обновляем список
+      loadMyBookingsByPhone(phone);
+    })
+    .catch(err => {
+      alert('❌ Ошибка отмены: ' + err.message);
+    });
+}
+
+function loadMyBookingsByPhone(phone) {
+  database.ref('bookings').orderByChild('clientPhone').equalTo(phone).once('value')
+    .then(snapshot => {
+      const data = snapshot.val();
+      if (!data) {
+        myBookingsList.innerHTML = '<p style="text-align:center;">У вас нет бронирований.</p>';
+        return;
+      }
+      const bookings = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+      bookings.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+      renderMyBookings(bookings, phone);
+    })
+    .catch(err => {
+      console.error('Ошибка обновления:', err);
+    });
+}
+
+// ===================== АДМИН-ПАНЕЛЬ =====================
+function loadAdminTours() {
+  const toursRef = database.ref('tours');
+  toursRef.once('value').then(snapshot => {
+    const data = snapshot.val();
+    if (!data) {
+      adminToursList.innerHTML = '<p style="text-align:center; color:#888;">Туров пока нет</p>';
+      return;
+    }
+    const toursArray = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+    renderAdminTours(toursArray);
+  }).catch(err => {
+    console.error('Ошибка загрузки туров для админки:', err);
+    adminToursList.innerHTML = '<p style="color:red;">Ошибка загрузки</p>';
+  });
+}
+
+function renderAdminTours(toursArray) {
+  adminToursList.innerHTML = '';
+  if (toursArray.length === 0) {
+    adminToursList.innerHTML = '<p style="text-align:center; color:#888;">Туров пока нет</p>';
+    return;
+  }
+  toursArray.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+  toursArray.forEach(tour => {
+    const div = document.createElement('div');
+    div.className = 'admin-tour-item';
+    const info = document.createElement('span');
+    info.textContent = `${tour.date} ${tour.time} — ${tour.route} (мест: ${tour.maxSpots - (tour.booked||0)}/${tour.maxSpots})`;
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '✕ Удалить';
+    delBtn.addEventListener('click', function() {
+      if (confirm(`Удалить прогулку на ${tour.date} в ${tour.time}?`)) {
+        const tourRef = database.ref(`tours/${tour.id}`);
+        tourRef.remove().then(() => {
+          loadAdminTours();
+        }).catch(err => {
+          alert('Ошибка удаления: ' + err.message);
+        });
+      }
+    });
+    div.appendChild(info);
+    div.appendChild(delBtn);
+    adminToursList.appendChild(div);
+  });
+}
+
+if (addTourBtn) {
+  addTourBtn.addEventListener('click', function() {
+    const date = adminDate.value;
+    const time = adminTime.value;
+    const route = adminRoute.value.trim();
+    const maxSpots = parseInt(adminMaxSpots.value, 10);
+    const pricePerBoard = parseInt(adminPrice.value, 10);
+    const routeDescription = adminDescription.value.trim();
+    const routeMapUrl = adminMapUrl.value.trim();
+
+    if (!date || !time || !route || isNaN(maxSpots) || isNaN(pricePerBoard)) {
+      alert('Заполните все обязательные поля (дата, время, маршрут, места, цена)');
+      return;
+    }
+    if (maxSpots < 1) {
+      alert('Максимальное мест должно быть не меньше 1');
+      return;
+    }
+
+    const newTour = {
+      date: date,
+      time: time,
+      route: route,
+      maxSpots: maxSpots,
+      booked: 0,
+      pricePerBoard: pricePerBoard,
+      routeDescription: routeDescription || '',
+      routeMapUrl: routeMapUrl || ''
+    };
+
+    const toursRef = database.ref('tours');
+    const newRef = toursRef.push();
+    newRef.set(newTour)
+      .then(() => {
+        alert('✅ Прогулка добавлена!');
+        adminDate.value = '';
+        adminTime.value = '';
+        adminRoute.value = '';
+        adminMaxSpots.value = '14';
+        adminPrice.value = '1700';
+        adminDescription.value = '';
+        adminMapUrl.value = '';
+        loadAdminTours();
+        showScreen('adminScreen');
+      })
+      .catch(err => {
+        alert('❌ Ошибка сохранения: ' + err.message);
+      });
+  });
+}
+
+// ===================== НАВИГАЦИЯ =====================
 if (prevMonthBtn) {
   prevMonthBtn.addEventListener('click', () => {
-    if (currentMonth === 0) {
-      currentMonth = 11;
-      currentYear--;
-    } else {
-      currentMonth--;
-    }
+    if (currentMonth === 0) { currentMonth = 11; currentYear--; } else { currentMonth--; }
     renderCalendar();
   });
 }
 if (nextMonthBtn) {
   nextMonthBtn.addEventListener('click', () => {
-    if (currentMonth === 11) {
-      currentMonth = 0;
-      currentYear++;
-    } else {
-      currentMonth++;
-    }
+    if (currentMonth === 11) { currentMonth = 0; currentYear++; } else { currentMonth++; }
     renderCalendar();
   });
 }
 
-// --- АДМИН-ПАНЕЛЬ ---
-
-// Рендер списка туров для администратора
-function renderAdminTours() {
-  if (!adminToursList) return;
-  adminToursList.innerHTML = '';
-  if (tours.length === 0) {
-    adminToursList.innerHTML = '<p style="text-align:center;">Прогулок пока нет.</p>';
-    return;
-  }
-  // Сортируем по дате и времени
-  const sorted = [...tours].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
-  sorted.forEach(tour => {
-    const available = tour.maxSpots - (tour.booked || 0);
-    const card = document.createElement('div');
-    card.className = 'tour-card';
-    card.innerHTML = `
-      <h3>${tour.date} в ${tour.time}</h3>
-      <p><strong>${tour.route}</strong></p>
-      <p>Мест: ${available} / ${tour.maxSpots}</p>
-      <p>Цена: ${tour.pricePerBoard} руб./сап</p>
-      <div class="admin-buttons">
-        <button class="edit-btn" data-id="${tour.id}">✏️ Редактировать</button>
-        <button class="delete-btn" data-id="${tour.id}">🗑️ Удалить</button>
-      </div>
-    `;
-    const editBtn = card.querySelector('.edit-btn');
-    const deleteBtn = card.querySelector('.delete-btn');
-    editBtn.addEventListener('click', () => editTour(tour));
-    deleteBtn.addEventListener('click', () => deleteTour(tour.id));
-    adminToursList.appendChild(card);
-  });
-}
-
-// --- Редактирование тура ---
-function editTour(tour) {
-  tourFormTitle.textContent = '✏️ Редактировать прогулку';
-  editTourIdInput.value = tour.id;
-  tourDateInput.value = tour.date;
-  tourTimeInput.value = tour.time;
-  tourRouteInput.value = tour.route;
-  tourMaxSpotsInput.value = tour.maxSpots;
-  tourPriceInput.value = tour.pricePerBoard;
-  tourDurationInput.value = tour.duration || '';
-  tourDescInput.value = tour.routeDescription || '';
-  tourMapInput.value = tour.routeMapUrl || '';
-  tourFormStatus.textContent = '';
-  tourFormStatus.className = '';
-  showScreen('tourFormScreen');
-}
-
-// --- Удаление тура ---
-function deleteTour(tourId) {
-  if (!confirm('Вы уверены, что хотите удалить эту прогулку?')) return;
-  const tourRef = database.ref(`tours/${tourId}`);
-  tourRef.remove()
-    .then(() => {
-      alert('Прогулка удалена!');
-      // Обновляем данные
-      loadTours();
-      if (isAdmin) renderAdminTours();
-    })
-    .catch(err => {
-      console.error('Ошибка удаления:', err);
-      alert('Ошибка удаления. Попробуйте позже.');
-    });
-}
-
-// --- Сохранение тура (новая или редактирование) ---
-tourForm.addEventListener('submit', function(e) {
-  e.preventDefault();
-  const tourId = editTourIdInput.value;
-  const date = tourDateInput.value;
-  const time = tourTimeInput.value;
-  const route = tourRouteInput.value.trim();
-  const maxSpots = parseInt(tourMaxSpotsInput.value, 10);
-  const price = parseInt(tourPriceInput.value, 10);
-  const duration = tourDurationInput.value.trim();
-  const description = tourDescInput.value.trim();
-  const mapUrl = tourMapInput.value.trim();
-
-  if (!date || !time || !route || !maxSpots || !price) {
-    tourFormStatus.textContent = '⚠️ Заполните все обязательные поля (дата, время, маршрут, места, цена)';
-    tourFormStatus.className = 'error';
-    return;
-  }
-
-  const tourData = {
-    date,
-    time,
-    route,
-    maxSpots,
-    pricePerBoard: price,
-    booked: 0,
-    duration,
-    routeDescription: description,
-    routeMapUrl: mapUrl
-  };
-
-  let ref;
-  if (tourId) {
-    // Редактирование существующего тура
-    ref = database.ref(`tours/${tourId}`);
-    // Сохраняем booked, чтобы не сбросить
-    const existingTour = tours.find(t => t.id === tourId);
-    if (existingTour) {
-      tourData.booked = existingTour.booked || 0;
-    }
-  } else {
-    // Новый тур
-    ref = database.ref('tours').push();
-  }
-
-  ref.set(tourData)
-    .then(() => {
-      tourFormStatus.textContent = '✅ Прогулка сохранена!';
-      tourFormStatus.className = 'success';
-      // Обновляем данные
-      loadTours();
-      if (isAdmin) renderAdminTours();
-      setTimeout(() => showScreen('adminPanel'), 1000);
-    })
-    .catch(err => {
-      console.error('Ошибка сохранения:', err);
-      tourFormStatus.textContent = '❌ Ошибка сохранения. Попробуйте позже.';
-      tourFormStatus.className = 'error';
-    });
-});
-
-// --- Кнопка "Добавить прогулку" ---
-addTourBtn.addEventListener('click', function() {
-  tourFormTitle.textContent = '➕ Новая прогулка';
-  editTourIdInput.value = '';
-  tourDateInput.value = '';
-  tourTimeInput.value = '';
-  tourRouteInput.value = '';
-  tourMaxSpotsInput.value = '10';
-  tourPriceInput.value = '1700';
-  tourDurationInput.value = '';
-  tourDescInput.value = '';
-  tourMapInput.value = '';
-  tourFormStatus.textContent = '';
-  tourFormStatus.className = '';
-  showScreen('tourFormScreen');
-});
-
-// --- Кнопка "Админ-панель" ---
-adminPanelBtn.addEventListener('click', function() {
-  showScreen('adminPanel');
-  renderAdminTours();
-});
-
-// --- Кнопка "Выбрать свою прогулку" ---
 if (chooseTourBtn) {
   chooseTourBtn.addEventListener('click', function() {
     console.log('🖱️ Кнопка "Выбрать свою прогулку" нажата');
@@ -494,12 +531,28 @@ if (chooseTourBtn) {
   });
 }
 
-// --- Приветствие ---
+if (myBookingsBtn) {
+  myBookingsBtn.addEventListener('click', function() {
+    loadMyBookings();
+  });
+}
+
+if (adminLoginBtn) {
+  adminLoginBtn.addEventListener('click', function() {
+    const password = prompt('Введите пароль администратора:');
+    if (password === ADMIN_PASSWORD) {
+      showScreen('adminScreen');
+      loadAdminTours();
+    } else if (password !== null) {
+      alert('Неверный пароль!');
+    }
+  });
+}
+
+// Приветствие
 if (currentUser && currentUser.first_name && greetingMessage) {
   greetingMessage.textContent = `👋 Привет, ${currentUser.first_name}!`;
 }
 
-// --- Инициализация ---
+// Инициализация
 showScreen('greetingScreen');
-checkAdmin();
-loadTours();

@@ -115,20 +115,20 @@ header p {
 }
 
 /* Список туров */
-#toursList, #adminToursList {
+#toursList, #myBookingsList, #adminToursList {
   margin: 16px 0;
 }
-.tour-card {
+.tour-card, .booking-card, .admin-tour-item {
   background: var(--tg-theme-bg-color, #fff);
   padding: 16px;
   border-radius: 14px;
   margin-bottom: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
-.tour-card h3 {
+.tour-card h3, .booking-card h3 {
   margin-bottom: 4px;
 }
-.tour-card p {
+.tour-card p, .booking-card p {
   margin: 4px 0;
 }
 .tour-card button {
@@ -140,18 +140,16 @@ header p {
   border-radius: 10px;
   cursor: pointer;
 }
-.tour-card .admin-buttons {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
+.cancel-btn {
+  background: #dc3545 !important;
+  color: white !important;
 }
-.tour-card .admin-buttons button {
-  flex: 1;
-  font-size: 14px;
-  padding: 6px;
+.cancel-btn:hover {
+  background: #c82333 !important;
 }
-.tour-card .admin-buttons .delete-btn {
-  background: #d32f2f;
+.cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Форма */
@@ -214,7 +212,7 @@ button[type="submit"]:active { transform: scale(0.98); }
   transform: scale(0.97);
 }
 
-#statusMessage, #tourFormStatus {
+#statusMessage {
   margin: 12px 0;
   text-align: center;
   font-weight: 500;
@@ -245,17 +243,36 @@ button[type="submit"]:active { transform: scale(0.98); }
 }
 
 /* Админ-панель */
-#adminToursList .tour-card .admin-buttons {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
+#adminScreen .field {
+  margin-bottom: 12px;
 }
-#adminToursList .tour-card .admin-buttons button {
-  flex: 1;
+#adminScreen label {
+  font-weight: 500;
+  font-size: 13px;
+}
+#adminScreen input, #adminScreen textarea {
   font-size: 14px;
-  padding: 6px;
+  padding: 10px 12px;
 }
-#adminToursList .tour-card .admin-buttons .delete-btn {
-  background: #d32f2f;
+.admin-tour-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--tg-theme-bg-color, #fff);
+  border-radius: 10px;
+  margin-bottom: 6px;
+  font-size: 14px;
+}
+.admin-tour-item button {
+  background: #dc3545;
   color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 4px 12px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.admin-tour-item button:hover {
+  background: #c82333;
 }
