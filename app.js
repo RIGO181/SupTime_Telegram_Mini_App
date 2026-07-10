@@ -61,7 +61,7 @@ let toursByDate = {};
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
 const ADMIN_TELEGRAM_ID = 611952; // Ваш Telegram ID
-const ADMIN_PASSWORD = 'admin123'; // Резервный пароль (на случай, если ID не определится)
+const ADMIN_PASSWORD = 'admin123'; // Резервный пароль
 
 // ============================================================
 // 3. ПОКАЗ ЭКРАНОВ
@@ -203,7 +203,7 @@ function showBookingForm(tour) {
 }
 
 // ============================================================
-// 8. ОТПРАВКА БРОНИРОВАНИЯ
+// 8. ОТПРАВКА БРОНИРОВАНИЯ (с обновлением клиента)
 // ============================================================
 form.addEventListener('submit', function(e) {
   e.preventDefault();
@@ -258,6 +258,24 @@ form.addEventListener('submit', function(e) {
       statusDiv.textContent = '✅ Ваше место забронировано!';
       statusDiv.className = 'success';
       form.reset();
+
+      // Обновление клиента
+      const clientRef = database.ref(`clients/${phone}`);
+      clientRef.once('value').then(snapshot => {
+        const existing = snapshot.val();
+        const visits = (existing?.totalVisits || 0) + 1;
+        const paid = (existing?.totalPaid || 0) + (tour.pricePerBoard * boards);
+        let color = existing?.color || '';
+        if (color !== 'black' && visits >= 5) color = 'gold';
+        clientRef.set({
+          phone: phone,
+          name: name,
+          totalVisits: visits,
+          totalPaid: paid,
+          color: color
+        });
+      });
+
       showConfirmation(bookingData);
     })
     .catch(err => {
@@ -265,22 +283,6 @@ form.addEventListener('submit', function(e) {
       statusDiv.textContent = '❌ Ошибка при сохранении.';
       statusDiv.className = 'error';
     });
-	// После сохранения бронирования обновляем клиента
-const clientRef = database.ref(`clients/${phone}`);
-clientRef.once('value').then(snapshot => {
-  const existing = snapshot.val();
-  const visits = (existing?.totalVisits || 0) + 1;
-  const paid = (existing?.totalPaid || 0) + (tour.pricePerBoard * boards);
-  let color = existing?.color || '';
-  if (color !== 'black' && visits >= 5) color = 'gold';
-  clientRef.set({
-    phone: phone,
-    name: name,
-    totalVisits: visits,
-    totalPaid: paid,
-    color: color
-  });
-});
 });
 
 // ============================================================
@@ -305,7 +307,6 @@ function showConfirmation(booking) {
       ${mapUrl ? `<p><a href="${mapUrl}" target="_blank" style="color:var(--tg-theme-button-color, #0088cc);">📍 Открыть маршрут на карте</a></p>` : ''}
     </div>
     <div style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
-      
       <button onclick="goHome()" class="back-btn" style="flex:1; background: var(--tg-theme-secondary-bg-color, #6c757d); color: white; border: none; padding:14px; border-radius:14px; font-size:18px; font-weight:700; cursor:pointer;">На главную</button>
     </div>
   `;
@@ -313,7 +314,6 @@ function showConfirmation(booking) {
   document.getElementById('app').appendChild(confirmScreen);
 }
 
-// Функция для возврата на главный экран
 function goHome() {
   const confirmScreen = document.getElementById('confirmScreen');
   if (confirmScreen) confirmScreen.remove();
@@ -361,7 +361,13 @@ function loadMyBookings(phone) {
           <div><strong>${booking.route}</strong></div>
           <div>${booking.date} в ${booking.time}</div>
           <div>Сапов: ${booking.boardsCount} | Сумма: ${booking.price} руб.</div>
-          <button class="cancel-btn" data-id="${booking.id}" data-tour="${booking.tourId}" data-boards="${booking.boardsCount}" ${canCancel ? '' : 'disabled'}>
+          <button class="cancel-btn" 
+                  data-id="${booking.id}" 
+                  data-tour="${booking.tourId}" 
+                  data-boards="${booking.boardsCount}" 
+                  data-phone="${booking.clientPhone}" 
+                  data-price="${booking.price}"
+                  ${canCancel ? '' : 'disabled'}>
             ${canCancel ? '❌ Отменить' : 'Отмена недоступна (менее 2 дней). Свяжитесь с администратором.'}
           </button>
         `;
@@ -374,7 +380,9 @@ function loadMyBookings(phone) {
             const bookingId = this.dataset.id;
             const tourId = this.dataset.tour;
             const boards = parseInt(this.dataset.boards, 10);
-            cancelBooking(bookingId, tourId, boards);
+            const clientPhone = this.dataset.phone;
+            const bookingPrice = parseInt(this.dataset.price, 10) || 0;
+            cancelBooking(bookingId, tourId, boards, clientPhone, bookingPrice);
           });
         }
       });
@@ -392,15 +400,48 @@ function canCancelBooking(date) {
   return diff >= 2;
 }
 
-function cancelBooking(bookingId, tourId, boards) {
+// ============================================================
+// 11. ОТМЕНА БРОНИРОВАНИЯ (с обновлением туров и клиента)
+// ============================================================
+function cancelBooking(bookingId, tourId, boards, clientPhone, bookingPrice) {
   if (!confirm('Вы уверены, что хотите отменить бронирование?')) return;
+
   const bookingRef = database.ref(`bookings/${bookingId}`);
   bookingRef.remove()
     .then(() => {
+      // Обновляем booked в туре
       const tourRef = database.ref(`tours/${tourId}/booked`);
       tourRef.transaction((current) => {
         return Math.max(0, (current || 0) - boards);
       });
+
+      // Локально обновляем для немедленного отображения
+      const tour = tours.find(t => t.id === tourId);
+      if (tour) {
+        tour.booked = Math.max(0, (tour.booked || 0) - boards);
+      }
+
+      // Обновляем статистику клиента
+      if (clientPhone) {
+        const clientRef = database.ref(`clients/${clientPhone}`);
+        clientRef.once('value').then(snap => {
+          const client = snap.val();
+          if (client) {
+            const newVisits = Math.max(0, (client.totalVisits || 1) - 1);
+            const newPaid = Math.max(0, (client.totalPaid || 0) - bookingPrice);
+            let color = client.color || '';
+            if (color === 'gold' && newVisits < 5) {
+              color = '';
+            }
+            clientRef.update({
+              totalVisits: newVisits,
+              totalPaid: newPaid,
+              color: color
+            });
+          }
+        });
+      }
+
       alert('✅ Бронирование отменено');
       const phone = myPhoneInput.value.trim();
       if (phone) loadMyBookings(phone);
@@ -411,27 +452,13 @@ function cancelBooking(bookingId, tourId, boards) {
 }
 
 // ============================================================
-// 11. НАВИГАЦИЯ КАЛЕНДАРЯ
-// ============================================================
-prevMonthBtn.addEventListener('click', () => {
-  if (currentMonth === 0) { currentMonth = 11; currentYear--; } else { currentMonth--; }
-  renderCalendar();
-});
-nextMonthBtn.addEventListener('click', () => {
-  if (currentMonth === 11) { currentMonth = 0; currentYear++; } else { currentMonth++; }
-  renderCalendar();
-});
-
-// ============================================================
 // 12. АДМИН-ПАНЕЛЬ (только для администратора)
 // ============================================================
-// Проверяем, является ли текущий пользователь администратором
 function isAdmin() {
   if (!currentUser) return false;
   return currentUser.id === ADMIN_TELEGRAM_ID;
 }
 
-// Если администратор, показываем кнопку
 if (adminLoginBtn) {
   if (isAdmin()) {
     adminLoginBtn.style.display = 'block';
@@ -441,12 +468,10 @@ if (adminLoginBtn) {
 }
 
 adminLoginBtn.addEventListener('click', function() {
-  // Дополнительная проверка на случай, если ID не определился
   if (!isAdmin()) {
     alert('У вас нет прав администратора');
     return;
   }
-  // Можно также запросить пароль для дополнительной защиты
   const password = prompt('Введите пароль администратора:');
   if (password === ADMIN_PASSWORD) {
     showScreen('adminScreen');
@@ -549,36 +574,6 @@ myBookingsBtn.addEventListener('click', function() {
   showScreen('myBookingsScreen');
   const phone = myPhoneInput.value.trim();
   if (phone) loadMyBookings(phone);
-});
-
-// После того как бронирование сохранено в bookings
-const clientRef = database.ref(`clients/${phone}`);
-clientRef.once('value').then(snapshot => {
-  const existing = snapshot.val();
-  if (existing) {
-    // Обновляем существующего клиента
-    const newVisits = (existing.totalVisits || 0) + 1;
-    const newPaid = (existing.totalPaid || 0) + (tour.pricePerBoard * boards);
-    // Цвет: если >=5 поездок, ставим gold (если не black)
-    let color = existing.color || '';
-    if (color !== 'black' && newVisits >= 5) color = 'gold';
-    clientRef.update({
-      totalVisits: newVisits,
-      totalPaid: newPaid,
-      color: color,
-      name: name // обновим имя на случай, если оно изменилось
-    });
-  } else {
-    // Создаём нового клиента
-    const newClient = {
-      phone: phone,
-      name: name,
-      totalVisits: 1,
-      totalPaid: tour.pricePerBoard * boards,
-      color: '' // или 'gold', если сразу больше 5? маловероятно
-    };
-    clientRef.set(newClient);
-  }
 });
 
 // ============================================================
