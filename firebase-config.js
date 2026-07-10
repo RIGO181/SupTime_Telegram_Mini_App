@@ -19,3 +19,5 @@ const newBookingRef = database.ref('bookings').push();
 newBookingRef.set(bookingData).then(() => {
     // успешно
 });
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
