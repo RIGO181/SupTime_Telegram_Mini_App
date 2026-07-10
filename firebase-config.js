@@ -1,3 +1,4 @@
+// firebase-config.js
 const firebaseConfig = {
   apiKey: "AIzaSyCvbhVmnVZ2gpYJ4DYJN2nLK1j6fIknCEQ",
   authDomain: "suptimeadmin.firebaseapp.com",
@@ -12,6 +13,6 @@ const firebaseConfig = {
 // Инициализация Firebase
 firebase.initializeApp(firebaseConfig);
 
-// Делаем ссылки глобальными
+// Глобальные ссылки (compat-версия)
 window.database = firebase.database();
-window.auth = firebase.auth();
+window.auth = firebase.auth();        // <-- строка 17, которая вызывала ошибку
