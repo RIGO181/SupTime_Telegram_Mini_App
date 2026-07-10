@@ -220,7 +220,7 @@ form.addEventListener('submit', function(e) {
   }
   const tour = tours.find(t => t.id === tourId);
   if (!tour) {
-    statusDiv.textContent = '❌ Тур не найден';
+    statusDiv.textContent = '❌ Прогулка не найдена';
     statusDiv.className = 'error';
     return;
   }
@@ -255,7 +255,7 @@ form.addEventListener('submit', function(e) {
     .then(() => {
       const tourRef = database.ref(`tours/${tourId}`);
       tourRef.update({ booked: (tour.booked || 0) + boards });
-      statusDiv.textContent = '✅ Бронирование создано!';
+      statusDiv.textContent = '✅ Ваше место забронировано!';
       statusDiv.className = 'success';
       form.reset();
       showConfirmation(bookingData);
@@ -289,8 +289,8 @@ function showConfirmation(booking) {
       ${mapUrl ? `<p><a href="${mapUrl}" target="_blank" style="color:var(--tg-theme-button-color, #0088cc);">📍 Открыть маршрут на карте</a></p>` : ''}
     </div>
     <div style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
-      <button onclick="window.location.reload()" class="main-btn" style="flex:1;">Новое бронирование</button>
-      <button onclick="goHome()" class="back-btn" style="flex:1; background: var(--tg-theme-secondary-bg-color, #6c757d); color: white; border: none; padding:14px; border-radius:14px; font-size:18px; font-weight:700; cursor:pointer;">← На главную</button>
+      
+      <button onclick="goHome()" class="back-btn" style="flex:1; background: var(--tg-theme-secondary-bg-color, #6c757d); color: white; border: none; padding:14px; border-radius:14px; font-size:18px; font-weight:700; cursor:pointer;">На главную</button>
     </div>
   `;
   document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
@@ -346,7 +346,7 @@ function loadMyBookings(phone) {
           <div>${booking.date} в ${booking.time}</div>
           <div>Сапов: ${booking.boardsCount} | Сумма: ${booking.price} руб.</div>
           <button class="cancel-btn" data-id="${booking.id}" data-tour="${booking.tourId}" data-boards="${booking.boardsCount}" ${canCancel ? '' : 'disabled'}>
-            ${canCancel ? '❌ Отменить' : 'Отмена недоступна (менее 2 дней)'}
+            ${canCancel ? '❌ Отменить' : 'Отмена недоступна (менее 2 дней). Свяжитесь с администратором.'}
           </button>
         `;
         myBookingsList.appendChild(div);
