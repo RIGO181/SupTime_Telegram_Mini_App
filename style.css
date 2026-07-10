@@ -80,6 +80,10 @@ header p {
   transform: scale(0.97);
 }
 
+.hidden {
+  display: none;
+}
+
 /* Календарь */
 .calendar-nav {
   display: flex;
