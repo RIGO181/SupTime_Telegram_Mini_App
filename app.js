@@ -79,23 +79,20 @@ waitForFirebase(() => {
   });
 
   window.auth.onAuthStateChanged(user => {
-    if (user) {
-      console.log('Аутентифицирован, UID:', user.uid);
-
-      // Показываем UID прямо на главном экране
-      const uidDisplay = document.createElement('div');
-      uidDisplay.id = 'uidDisplay';
-      uidDisplay.textContent = 'Ваш UID: ' + user.uid;
-      uidDisplay.style.cssText =
-        'margin-top: 16px; padding: 12px; background: #fff3cd; border-radius: 10px; word-break: break-all; text-align: center; font-size: 14px;';
-      document.getElementById('greetingScreen').appendChild(uidDisplay);
-
-      // Запускаем основное приложение
-      initApp();
-    } else {
-      console.log('Не аутентифицирован');
-    }
-  });
+  if (user) {
+    // Показываем UID во всплывающем окне, чтобы точно увидеть
+    alert('Ваш Firebase UID (скопируйте его):\n\n' + user.uid);
+    
+    // Также оставляем вывод в консоль и на экран
+    console.log('UID:', user.uid);
+    const uidDisplay = document.createElement('div');
+    uidDisplay.id = 'uidDisplay';
+    uidDisplay.textContent = 'Ваш UID: ' + user.uid;
+    uidDisplay.style.cssText = '...';
+    document.getElementById('greetingScreen').appendChild(uidDisplay);
+    
+    initApp();
+  }
 });
 
 // ============================================================
