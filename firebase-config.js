@@ -13,6 +13,6 @@ const firebaseConfig = {
 // Инициализация Firebase
 firebase.initializeApp(firebaseConfig);
 
-// Глобальные ссылки (теперь auth будет доступен)
+// Глобальные ссылки (compat-версия)
 window.database = firebase.database();
-window.auth = firebase.auth();   // ← эта строка больше не вызовет ошибку
+window.auth = firebase.auth();

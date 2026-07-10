@@ -83,7 +83,7 @@ waitForFirebase(() => {
     if (user) {
       console.log('Аутентифицирован, UID:', user.uid);
 
-      // Показываем UID прямо на главном экране
+      // Показываем UID на главном экране
       const uidDisplay = document.createElement('div');
       uidDisplay.id = 'uidDisplay';
       uidDisplay.textContent = 'Ваш UID: ' + user.uid;
@@ -91,7 +91,7 @@ waitForFirebase(() => {
         'margin-top: 16px; padding: 12px; background: #fff3cd; border-radius: 10px; word-break: break-all; text-align: center; font-size: 14px;';
       document.getElementById('greetingScreen').appendChild(uidDisplay);
 
-      // Проверяем, является ли пользователь администратором
+      // Проверяем, администратор ли текущий пользователь
       window.database.ref(`admins/${user.uid}`).once('value').then(snap => {
         if (snap.exists()) {
           if (adminLoginBtn) adminLoginBtn.style.display = 'block';
@@ -101,7 +101,6 @@ waitForFirebase(() => {
         }
       });
 
-      // Запускаем основное приложение
       initApp();
     } else {
       console.log('Не аутентифицирован');
@@ -114,7 +113,7 @@ waitForFirebase(() => {
 // ============================================================
 function initApp() {
   // 4.1. ПОКАЗ ЭКРАНОВ
-  function showScreen(screenName) {
+  window.showScreen = function(screenName) {
     const screens = [
       'greetingScreen', 'calendarScreen', 'toursScreen',
       'bookingForm', 'myBookingsScreen', 'adminScreen'
@@ -127,7 +126,7 @@ function initApp() {
       const confirmScreen = document.getElementById('confirmScreen');
       if (confirmScreen) confirmScreen.remove();
     }
-  }
+  };
 
   // 4.2. ЗАГРУЗКА ТУРОВ
   function loadTours() {
@@ -211,7 +210,7 @@ function initApp() {
     const dayTours = toursByDate[date] || [];
     if (dayTours.length === 0) {
       toursList.innerHTML = '<p style="text-align:center;">Нет прогулок</p>';
-      showScreen('toursScreen');
+      window.showScreen('toursScreen');
       return;
     }
     dayTours.forEach(tour => {
@@ -230,7 +229,7 @@ function initApp() {
       });
       toursList.appendChild(card);
     });
-    showScreen('toursScreen');
+    window.showScreen('toursScreen');
   }
 
   // 4.5. ФОРМА БРОНИРОВАНИЯ
@@ -246,7 +245,7 @@ function initApp() {
     nameInput.value = '';
     phoneInput.value = '';
     commentInput.value = '';
-    showScreen('bookingForm');
+    window.showScreen('bookingForm');
   }
 
   // 4.6. ОТПРАВКА БРОНИРОВАНИЯ
@@ -359,7 +358,7 @@ function initApp() {
   window.goHome = function() {
     const confirmScreen = document.getElementById('confirmScreen');
     if (confirmScreen) confirmScreen.remove();
-    showScreen('greetingScreen');
+    window.showScreen('greetingScreen');
   };
 
   // 4.8. МОИ БРОНИРОВАНИЯ
@@ -508,7 +507,7 @@ function initApp() {
   adminLoginBtn.addEventListener('click', function() {
     const password = prompt('Введите пароль администратора:');
     if (password === ADMIN_PASSWORD) {
-      showScreen('adminScreen');
+      window.showScreen('adminScreen');
       loadAdminTours();
     } else if (password !== null) {
       alert('Неверный пароль!');
@@ -598,12 +597,12 @@ function initApp() {
 
   // 4.11. КНОПКИ ГЛАВНОГО ЭКРАНА
   chooseTourBtn.addEventListener('click', () => {
-    showScreen('calendarScreen');
+    window.showScreen('calendarScreen');
     loadTours();
   });
 
   myBookingsBtn.addEventListener('click', () => {
-    showScreen('myBookingsScreen');
+    window.showScreen('myBookingsScreen');
     const rawPhone = myPhoneInput.value.trim();
     if (rawPhone) loadMyBookings(normalizePhone(rawPhone));
   });
@@ -613,7 +612,7 @@ function initApp() {
     greetingMessage.textContent = `👋 Привет, ${currentUser.first_name}!`;
   }
 
-  showScreen('greetingScreen');
+  window.showScreen('greetingScreen');
 
   // 4.13. НАВИГАЦИЯ КАЛЕНДАРЯ
   prevMonthBtn.addEventListener('click', () => {
