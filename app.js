@@ -265,6 +265,22 @@ form.addEventListener('submit', function(e) {
       statusDiv.textContent = '❌ Ошибка при сохранении.';
       statusDiv.className = 'error';
     });
+	// После сохранения бронирования обновляем клиента
+const clientRef = database.ref(`clients/${phone}`);
+clientRef.once('value').then(snapshot => {
+  const existing = snapshot.val();
+  const visits = (existing?.totalVisits || 0) + 1;
+  const paid = (existing?.totalPaid || 0) + (tour.pricePerBoard * boards);
+  let color = existing?.color || '';
+  if (color !== 'black' && visits >= 5) color = 'gold';
+  clientRef.set({
+    phone: phone,
+    name: name,
+    totalVisits: visits,
+    totalPaid: paid,
+    color: color
+  });
+});
 });
 
 // ============================================================
@@ -533,6 +549,36 @@ myBookingsBtn.addEventListener('click', function() {
   showScreen('myBookingsScreen');
   const phone = myPhoneInput.value.trim();
   if (phone) loadMyBookings(phone);
+});
+
+// После того как бронирование сохранено в bookings
+const clientRef = database.ref(`clients/${phone}`);
+clientRef.once('value').then(snapshot => {
+  const existing = snapshot.val();
+  if (existing) {
+    // Обновляем существующего клиента
+    const newVisits = (existing.totalVisits || 0) + 1;
+    const newPaid = (existing.totalPaid || 0) + (tour.pricePerBoard * boards);
+    // Цвет: если >=5 поездок, ставим gold (если не black)
+    let color = existing.color || '';
+    if (color !== 'black' && newVisits >= 5) color = 'gold';
+    clientRef.update({
+      totalVisits: newVisits,
+      totalPaid: newPaid,
+      color: color,
+      name: name // обновим имя на случай, если оно изменилось
+    });
+  } else {
+    // Создаём нового клиента
+    const newClient = {
+      phone: phone,
+      name: name,
+      totalVisits: 1,
+      totalPaid: tour.pricePerBoard * boards,
+      color: '' // или 'gold', если сразу больше 5? маловероятно
+    };
+    clientRef.set(newClient);
+  }
 });
 
 // ============================================================
