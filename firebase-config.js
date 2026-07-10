@@ -1,3 +1,4 @@
+// firebase-config.js
 const firebaseConfig = {
   apiKey: "AIzaSyCvbhVmnVZ2gpYJ4DYJN2nLK1j6fIknCEQ",
   authDomain: "suptimeadmin.firebaseapp.com",
@@ -9,5 +10,12 @@ const firebaseConfig = {
   measurementId: "G-TDJJ5NE7KP"
 };
 
+// Инициализация Firebase
 firebase.initializeApp(firebaseConfig);
+
+// Получаем ссылку на базу данных
 const database = firebase.database();
+const newBookingRef = database.ref('bookings').push();
+newBookingRef.set(bookingData).then(() => {
+    // успешно
+});
