@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SUP TIME — Бронирование</title>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ЭКРАН 1: Приветствие -->
+    <div id="greetingScreen" class="screen">
+      <header>
+        <h1>🏄 SUP TIME</h1>
+        <p>Забронируй сап-прогулку</p>
+      </header>
+      <div style="text-align: center; margin-top: 20px;">
+        <p id="greetingMessage" style="font-size:18px; margin-bottom:20px;">👋 Привет!</p>
+        <button id="chooseTourBtn" class="main-btn">Выбрать свою прогулку</button>
+        <button id="adminPanelBtn" class="main-btn" style="margin-top:10px; display:none;">⚙️ Админ-панель</button>
+      </div>
+    </div>
+
+    <!-- ЭКРАН 2: Календарь -->
+    <div id="calendarScreen" class="screen" style="display:none;">
+      <h2 style="text-align:center; margin-bottom:8px;">🗓 Выберите дату</h2>
+      <div class="calendar-nav">
+        <button id="prevMonth">◀</button>
+        <span id="monthYear"></span>
+        <button id="nextMonth">▶</button>
+      </div>
+      <div id="calendarContainer">
+        <div id="daysGrid" class="days-grid"></div>
+      </div>
+      <button onclick="showScreen('greetingScreen')" class="back-btn" style="margin-top:12px;">← Назад</button>
+    </div>
+
+    <!-- ЭКРАН 3: Список туров на выбранную дату -->
+    <div id="toursScreen" class="screen" style="display:none;">
+      <h2 style="text-align:center; margin-bottom:8px;">📋 Доступные прогулки</h2>
+      <div id="toursList"></div>
+      <button onclick="showScreen('calendarScreen')" class="back-btn" style="margin-top:12px;">← Назад</button>
+    </div>
+
+    <!-- ЭКРАН 4: Форма бронирования -->
+    <div id="bookingForm" class="screen" style="display:none;">
+      <h2 style="text-align:center; margin-bottom:8px;">✏️ Заполните данные</h2>
+      <div id="tourInfo" style="margin-bottom:12px; font-weight:500; text-align:center;"></div>
+      <form id="bookingFormInner">
+        <input type="hidden" id="tourId" value="">
+        <input type="hidden" id="maxSpots" value="">
+        <input type="hidden" id="pricePerBoard" value="">
+
+        <div class="field">
+          <label for="name">Ваше имя *</label>
+          <input type="text" id="name" placeholder="Иван" required>
+        </div>
+
+        <div class="field">
+          <label for="phone">Телефон *</label>
+          <input type="tel" id="phone" placeholder="+7 900 123-45-67" required>
+        </div>
+
+        <div class="field">
+          <label for="boards">Количество сапов *</label>
+          <input type="number" id="boards" min="1" max="14" value="1" required>
+        </div>
+
+        <div class="field">
+          <label for="comment">Комментарий (не обязательно)</label>
+          <textarea id="comment" rows="2" placeholder="Пожелания..."></textarea>
+        </div>
+
+        <div id="statusMessage" style="margin:12px 0; text-align:center;"></div>
+        <button type="submit" id="submitBtn">Забронировать</button>
+        <button type="button" onclick="showScreen('toursScreen')" class="back-btn" style="margin-top:12px;">← Назад</button>
+      </form>
+    </div>
+
+    <!-- ЭКРАН 5: Админ-панель -->
+    <div id="adminPanel" class="screen" style="display:none;">
+      <h2 style="text-align:center; margin-bottom:8px;">⚙️ Управление прогулками</h2>
+      <div id="adminToursList" style="margin-bottom:16px;"></div>
+      <button id="addTourBtn" class="main-btn" style="margin-top:8px;">➕ Добавить прогулку</button>
+      <button onclick="showScreen('greetingScreen')" class="back-btn" style="margin-top:12px;">← Назад</button>
+    </div>
+
+    <!-- ЭКРАН 6: Форма создания/редактирования тура -->
+    <div id="tourFormScreen" class="screen" style="display:none;">
+      <h2 id="tourFormTitle" style="text-align:center; margin-bottom:8px;">Новая прогулка</h2>
+      <form id="tourForm">
+        <input type="hidden" id="editTourId" value="">
+
+        <div class="field">
+          <label for="tourDate">Дата *</label>
+          <input type="date" id="tourDate" required>
+        </div>
+
+        <div class="field">
+          <label for="tourTime">Время *</label>
+          <input type="time" id="tourTime" step="900" required>
+        </div>
+
+        <div class="field">
+          <label for="tourRoute">Маршрут *</label>
+          <input type="text" id="tourRoute" placeholder="например: мкр.Московский - пляж Брянск 1й" required>
+        </div>
+
+        <div class="field">
+          <label for="tourMaxSpots">Количество мест *</label>
+          <input type="number" id="tourMaxSpots" min="1" max="14" value="10" required>
+        </div>
+
+        <div class="field">
+          <label for="tourPrice">Цена за сап (руб.) *</label>
+          <input type="number" id="tourPrice" min="1" value="1700" required>
+        </div>
+
+        <div class="field">
+          <label for="tourDuration">Продолжительность</label>
+          <input type="text" id="tourDuration" placeholder="2.5-3 часа">
+        </div>
+
+        <div class="field">
+          <label for="tourDesc">Описание маршрута</label>
+          <textarea id="tourDesc" rows="3" placeholder="Старт с дикого пляжа..."></textarea>
+        </div>
+
+        <div class="field">
+          <label for="tourMap">Ссылка на карты</label>
+          <input type="url" id="tourMap" placeholder="https://yandex.ru/maps/...">
+        </div>
+
+        <div id="tourFormStatus" style="margin:12px 0; text-align:center;"></div>
+        <button type="submit" id="saveTourBtn">Сохранить</button>
+        <button type="button" onclick="showScreen('adminPanel')" class="back-btn" style="margin-top:12px;">← Назад</button>
+      </form>
+    </div>
+
+  </div>
+  <script src="firebase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

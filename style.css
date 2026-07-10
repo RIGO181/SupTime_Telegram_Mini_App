@@ -1,0 +1,261 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+body {
+  background: var(--tg-theme-bg-color, #ffffff);
+  color: var(--tg-theme-text-color, #000000);
+  padding: 16px;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+#app {
+  max-width: 450px;
+  width: 100%;
+  background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+  border-radius: 20px;
+  padding: 24px 20px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+}
+
+.screen {
+  display: block;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--tg-theme-button-color, #0088cc);
+}
+header p {
+  font-size: 14px;
+  opacity: 0.7;
+}
+
+/* Кнопки */
+.main-btn {
+  width: 100%;
+  padding: 14px;
+  background: var(--tg-theme-button-color, #0088cc);
+  color: var(--tg-theme-button-text-color, #fff);
+  border: none;
+  border-radius: 14px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.main-btn:hover { opacity: 0.9; }
+.main-btn:active { transform: scale(0.98); }
+
+/* Календарь */
+.calendar-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 16px 0;
+}
+.calendar-nav button {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: var(--tg-theme-text-color);
+}
+#monthYear {
+  font-weight: 600;
+  font-size: 18px;
+}
+.days-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.weekday {
+  text-align: center;
+  font-weight: 600;
+  padding: 8px 0;
+  color: var(--tg-theme-hint-color, #888);
+}
+.day {
+  text-align: center;
+  padding: 12px 0;
+  border-radius: 8px;
+  cursor: default;
+  background: var(--tg-theme-bg-color, #fff);
+  font-weight: 500;
+}
+.day.available {
+  background: var(--tg-theme-button-color, #0088cc);
+  color: var(--tg-theme-button-text-color, #fff);
+  cursor: pointer;
+}
+.day.unavailable {
+  background: #e0e0e0;
+  color: #999;
+  text-decoration: line-through;
+}
+.day.past {
+  opacity: 0.4;
+  text-decoration: line-through;
+}
+.day.empty {
+  background: transparent;
+  cursor: default;
+}
+
+/* Список туров */
+#toursList, #adminToursList {
+  margin: 16px 0;
+}
+.tour-card {
+  background: var(--tg-theme-bg-color, #fff);
+  padding: 16px;
+  border-radius: 14px;
+  margin-bottom: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+.tour-card h3 {
+  margin-bottom: 4px;
+}
+.tour-card p {
+  margin: 4px 0;
+}
+.tour-card button {
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: var(--tg-theme-button-color, #0088cc);
+  color: var(--tg-theme-button-text-color, #fff);
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.tour-card .admin-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.tour-card .admin-buttons button {
+  flex: 1;
+  font-size: 14px;
+  padding: 6px;
+}
+.tour-card .admin-buttons .delete-btn {
+  background: #d32f2f;
+}
+
+/* Форма */
+.field {
+  margin-bottom: 16px;
+}
+label {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+input, select, textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--tg-theme-hint-color, #ccc);
+  border-radius: 12px;
+  font-size: 16px;
+  background: var(--tg-theme-bg-color, #fff);
+  color: var(--tg-theme-text-color, #000);
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--tg-theme-button-color, #0088cc);
+}
+
+button[type="submit"] {
+  width: 100%;
+  padding: 14px;
+  background: var(--tg-theme-button-color, #0088cc);
+  color: var(--tg-theme-button-text-color, #fff);
+  border: none;
+  border-radius: 14px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+button[type="submit"]:active { transform: scale(0.98); }
+
+.back-btn {
+  display: inline-block;
+  padding: 10px 20px;
+  margin-top: 12px;
+  background: var(--tg-theme-secondary-bg-color, #e0e0e0);
+  color: var(--tg-theme-text-color, #000);
+  border: 1px solid var(--tg-theme-hint-color, #aaa);
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  width: auto;
+  text-align: center;
+  transition: background 0.2s;
+}
+.back-btn:hover {
+  background: var(--tg-theme-hint-color, #ccc);
+}
+.back-btn:active {
+  transform: scale(0.97);
+}
+
+#statusMessage, #tourFormStatus {
+  margin: 12px 0;
+  text-align: center;
+  font-weight: 500;
+}
+.success { color: #2e7d32; }
+.error { color: #c62828; }
+
+/* Экран подтверждения */
+#confirmScreen {
+  text-align: center;
+  padding: 20px 0;
+}
+#confirmScreen .confirm-details {
+  background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  padding: 16px;
+  border-radius: 14px;
+  margin: 16px 0;
+  text-align: left;
+}
+#confirmScreen button {
+  padding: 12px 30px;
+  background: var(--tg-theme-button-color, #0088cc);
+  color: var(--tg-theme-button-text-color, #fff);
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Админ-панель */
+#adminToursList .tour-card .admin-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+#adminToursList .tour-card .admin-buttons button {
+  flex: 1;
+  font-size: 14px;
+  padding: 6px;
+}
+#adminToursList .tour-card .admin-buttons .delete-btn {
+  background: #d32f2f;
+  color: white;
+}
