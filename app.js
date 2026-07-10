@@ -8,13 +8,7 @@ if (tg) {
 }
 
 // ============================================================
-// 1. КОНФИГУРАЦИЯ
-// ============================================================
-const ADMIN_USER_ID = 611952; // ID администратора
-const ADMIN_PASSWORD = 'admin123'; // дополнительный пароль (опционально)
-
-// ============================================================
-// 2. ЭЛЕМЕНТЫ DOM
+// 1. ЭЛЕМЕНТЫ DOM
 // ============================================================
 const chooseTourBtn = document.getElementById('chooseTourBtn');
 const myBookingsBtn = document.getElementById('myBookingsBtn');
@@ -59,39 +53,34 @@ const addTourBtn = document.getElementById('addTourBtn');
 const adminToursList = document.getElementById('adminToursList');
 
 // ============================================================
-// 3. СОСТОЯНИЕ
+// 2. СОСТОЯНИЕ
 // ============================================================
 let currentUser = tg?.initDataUnsafe?.user || null;
 let tours = [];
 let toursByDate = {};
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
+const ADMIN_TELEGRAM_ID = 611952; // Ваш Telegram ID
+const ADMIN_PASSWORD = 'admin123'; // Резервный пароль (на случай, если ID не определится)
 
 // ============================================================
-// 4. ПРОВЕРКА АДМИНИСТРАТОРА
-// ============================================================
-function isAdmin() {
-  return currentUser && currentUser.id === ADMIN_USER_ID;
-}
-
-// ============================================================
-// 5. ПОКАЗ ЭКРАНОВ (с проверкой прав для админки)
+// 3. ПОКАЗ ЭКРАНОВ
 // ============================================================
 function showScreen(screenName) {
-  // Если пытаются открыть админ-экран, но не админ – возвращаем на главный
-  if (screenName === 'adminScreen' && !isAdmin()) {
-    alert('Доступ запрещён');
-    screenName = 'greetingScreen';
-  }
   const screens = ['greetingScreen', 'calendarScreen', 'toursScreen', 'bookingForm', 'myBookingsScreen', 'adminScreen'];
   screens.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = (id === screenName) ? 'block' : 'none';
   });
+  // Если показываем приветствие, удаляем экран подтверждения (если есть)
+  if (screenName === 'greetingScreen') {
+    const confirmScreen = document.getElementById('confirmScreen');
+    if (confirmScreen) confirmScreen.remove();
+  }
 }
 
 // ============================================================
-// 6. ЗАГРУЗКА ТУРОВ
+// 4. ЗАГРУЗКА ТУРОВ (для клиента)
 // ============================================================
 function loadTours() {
   console.log('🔄 loadTours вызвана');
@@ -118,7 +107,7 @@ function loadTours() {
 }
 
 // ============================================================
-// 7. КАЛЕНДАРЬ
+// 5. КАЛЕНДАРЬ
 // ============================================================
 function renderCalendar() {
   if (!monthYear || !daysGrid) return;
@@ -165,7 +154,7 @@ function renderCalendar() {
 }
 
 // ============================================================
-// 8. ТУРЫ ПО ДАТЕ
+// 6. ТУРЫ ПО ДАТЕ
 // ============================================================
 function showToursForDate(date) {
   if (!toursList) return;
@@ -196,7 +185,7 @@ function showToursForDate(date) {
 }
 
 // ============================================================
-// 9. ФОРМА БРОНИРОВАНИЯ
+// 7. ФОРМА БРОНИРОВАНИЯ
 // ============================================================
 function showBookingForm(tour) {
   tourInfo.textContent = `${tour.route}, ${tour.date} в ${tour.time}`;
@@ -214,7 +203,7 @@ function showBookingForm(tour) {
 }
 
 // ============================================================
-// 10. ОТПРАВКА БРОНИРОВАНИЯ
+// 8. ОТПРАВКА БРОНИРОВАНИЯ
 // ============================================================
 form.addEventListener('submit', function(e) {
   e.preventDefault();
@@ -279,7 +268,7 @@ form.addEventListener('submit', function(e) {
 });
 
 // ============================================================
-// 11. ПОДТВЕРЖДЕНИЕ
+// 9. ПОДТВЕРЖДЕНИЕ (С КНОПКОЙ "НА ГЛАВНУЮ")
 // ============================================================
 function showConfirmation(booking) {
   const tour = tours.find(t => t.id === booking.tourId);
@@ -289,24 +278,34 @@ function showConfirmation(booking) {
   const confirmScreen = document.createElement('div');
   confirmScreen.id = 'confirmScreen';
   confirmScreen.innerHTML = `
-    <h2>✅ Готово!</h2>
+    <h2>✅ Бронирование подтверждено!</h2>
     <div class="confirm-details">
       <p><strong>${booking.route}</strong></p>
       <p>Дата: ${booking.date}</p>
       <p>Время: ${booking.time}</p>
       <p>Сапов: ${booking.boardsCount}</p>
       <p>Сумма: ${booking.price} руб.</p>
-      ${routeDesc ? `<p>${routeDesc}</p>` : ''}
-      ${mapUrl ? `<p><a href="${mapUrl}" target="_blank" style="color:var(--tg-theme-button-color, #0088cc);">📍 Открыть на карте</a></p>` : ''}
+      ${routeDesc ? `<p style="margin-top:8px;">${routeDesc}</p>` : ''}
+      ${mapUrl ? `<p><a href="${mapUrl}" target="_blank" style="color:var(--tg-theme-button-color, #0088cc);">📍 Открыть маршрут на карте</a></p>` : ''}
     </div>
-    <button onclick="window.location.reload()">Новое бронирование</button>
+    <div style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
+      <button onclick="window.location.reload()" class="main-btn" style="flex:1;">Новое бронирование</button>
+      <button onclick="goHome()" class="back-btn" style="flex:1; background: var(--tg-theme-secondary-bg-color, #6c757d); color: white; border: none; padding:14px; border-radius:14px; font-size:18px; font-weight:700; cursor:pointer;">← На главную</button>
+    </div>
   `;
   document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
   document.getElementById('app').appendChild(confirmScreen);
 }
 
+// Функция для возврата на главный экран
+function goHome() {
+  const confirmScreen = document.getElementById('confirmScreen');
+  if (confirmScreen) confirmScreen.remove();
+  showScreen('greetingScreen');
+}
+
 // ============================================================
-// 12. МОИ БРОНИРОВАНИЯ
+// 10. МОИ БРОНИРОВАНИЯ
 // ============================================================
 loadMyBookingsBtn.addEventListener('click', function() {
   const phone = myPhoneInput.value.trim();
@@ -396,7 +395,7 @@ function cancelBooking(bookingId, tourId, boards) {
 }
 
 // ============================================================
-// 13. НАВИГАЦИЯ КАЛЕНДАРЯ
+// 11. НАВИГАЦИЯ КАЛЕНДАРЯ
 // ============================================================
 prevMonthBtn.addEventListener('click', () => {
   if (currentMonth === 0) { currentMonth = 11; currentYear--; } else { currentMonth--; }
@@ -408,13 +407,30 @@ nextMonthBtn.addEventListener('click', () => {
 });
 
 // ============================================================
-// 14. АДМИН-ПАНЕЛЬ
+// 12. АДМИН-ПАНЕЛЬ (только для администратора)
 // ============================================================
+// Проверяем, является ли текущий пользователь администратором
+function isAdmin() {
+  if (!currentUser) return false;
+  return currentUser.id === ADMIN_TELEGRAM_ID;
+}
+
+// Если администратор, показываем кнопку
+if (adminLoginBtn) {
+  if (isAdmin()) {
+    adminLoginBtn.style.display = 'block';
+  } else {
+    adminLoginBtn.style.display = 'none';
+  }
+}
+
 adminLoginBtn.addEventListener('click', function() {
+  // Дополнительная проверка на случай, если ID не определился
   if (!isAdmin()) {
-    alert('Доступ запрещён');
+    alert('У вас нет прав администратора');
     return;
   }
+  // Можно также запросить пароль для дополнительной защиты
   const password = prompt('Введите пароль администратора:');
   if (password === ADMIN_PASSWORD) {
     showScreen('adminScreen');
@@ -506,7 +522,7 @@ addTourBtn.addEventListener('click', function() {
 });
 
 // ============================================================
-// 15. КНОПКИ ГЛАВНОГО ЭКРАНА
+// 13. КНОПКИ ГЛАВНОГО ЭКРАНА
 // ============================================================
 chooseTourBtn.addEventListener('click', function() {
   showScreen('calendarScreen');
@@ -520,18 +536,8 @@ myBookingsBtn.addEventListener('click', function() {
 });
 
 // ============================================================
-// 16. ИНИЦИАЛИЗАЦИЯ
+// 14. ПРИВЕТСТВИЕ
 // ============================================================
-// Показываем или скрываем кнопку админа в зависимости от прав
-if (adminLoginBtn) {
-  if (isAdmin()) {
-    adminLoginBtn.classList.remove('hidden');
-  } else {
-    adminLoginBtn.classList.add('hidden');
-  }
-}
-
-// Приветствие
 if (currentUser && currentUser.first_name && greetingMessage) {
   greetingMessage.textContent = `👋 Привет, ${currentUser.first_name}!`;
 }
