@@ -42,6 +42,7 @@ header p {
   opacity: 0.7;
 }
 
+/* Кнопки */
 .main-btn {
   width: 100%;
   padding: 14px;
@@ -56,33 +57,6 @@ header p {
 }
 .main-btn:hover { opacity: 0.9; }
 .main-btn:active { transform: scale(0.98); }
-
-.back-btn {
-  display: inline-block;
-  padding: 10px 20px;
-  margin-top: 12px;
-  background: var(--tg-theme-secondary-bg-color, #e0e0e0);
-  color: var(--tg-theme-text-color, #000);
-  border: 1px solid var(--tg-theme-hint-color, #aaa);
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 500;
-  cursor: pointer;
-  text-decoration: none;
-  width: auto;
-  text-align: center;
-  transition: background 0.2s;
-}
-.back-btn:hover {
-  background: var(--tg-theme-hint-color, #ccc);
-}
-.back-btn:active {
-  transform: scale(0.97);
-}
-
-.hidden {
-  display: none;
-}
 
 /* Календарь */
 .calendar-nav {
@@ -141,20 +115,20 @@ header p {
 }
 
 /* Список туров */
-#toursList {
+#toursList, #myBookingsList, #adminToursList {
   margin: 16px 0;
 }
-.tour-card {
+.tour-card, .booking-card, .admin-tour-item {
   background: var(--tg-theme-bg-color, #fff);
   padding: 16px;
   border-radius: 14px;
   margin-bottom: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.05);
 }
-.tour-card h3 {
+.tour-card h3, .booking-card h3 {
   margin-bottom: 4px;
 }
-.tour-card p {
+.tour-card p, .booking-card p {
   margin: 4px 0;
 }
 .tour-card button {
@@ -165,6 +139,17 @@ header p {
   border: none;
   border-radius: 10px;
   cursor: pointer;
+}
+.cancel-btn {
+  background: #dc3545 !important;
+  color: white !important;
+}
+.cancel-btn:hover {
+  background: #c82333 !important;
+}
+.cancel-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Форма */
@@ -204,6 +189,29 @@ button[type="submit"] {
 }
 button[type="submit"]:active { transform: scale(0.98); }
 
+.back-btn {
+  display: inline-block;
+  padding: 10px 20px;
+  margin-top: 12px;
+  background: var(--tg-theme-secondary-bg-color, #e0e0e0);
+  color: var(--tg-theme-text-color, #000);
+  border: 1px solid var(--tg-theme-hint-color, #aaa);
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+  width: auto;
+  text-align: center;
+  transition: background 0.2s;
+}
+.back-btn:hover {
+  background: var(--tg-theme-hint-color, #ccc);
+}
+.back-btn:active {
+  transform: scale(0.97);
+}
+
 #statusMessage {
   margin: 12px 0;
   text-align: center;
@@ -212,27 +220,26 @@ button[type="submit"]:active { transform: scale(0.98); }
 .success { color: #2e7d32; }
 .error { color: #c62828; }
 
-/* Мои бронирования */
-.booking-card {
-  background: var(--tg-theme-bg-color, #fff);
-  padding: 12px 16px;
-  border-radius: 12px;
-  margin-bottom: 10px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+/* Экран подтверждения */
+#confirmScreen {
+  text-align: center;
+  padding: 20px 0;
 }
-.booking-card .cancel-btn {
-  background: #dc3545;
-  color: white;
+#confirmScreen .confirm-details {
+  background: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  padding: 16px;
+  border-radius: 14px;
+  margin: 16px 0;
+  text-align: left;
+}
+#confirmScreen button {
+  padding: 12px 30px;
+  background: var(--tg-theme-button-color, #0088cc);
+  color: var(--tg-theme-button-text-color, #fff);
   border: none;
-  border-radius: 8px;
-  padding: 6px 14px;
+  border-radius: 14px;
+  font-size: 16px;
   cursor: pointer;
-  font-size: 14px;
-  margin-top: 6px;
-}
-.booking-card .cancel-btn:disabled {
-  background: #ccc;
-  cursor: not-allowed;
 }
 
 /* Админ-панель */
@@ -247,7 +254,7 @@ button[type="submit"]:active { transform: scale(0.98); }
   font-size: 14px;
   padding: 10px 12px;
 }
-#adminToursList .tour-item {
+.admin-tour-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -257,7 +264,7 @@ button[type="submit"]:active { transform: scale(0.98); }
   margin-bottom: 6px;
   font-size: 14px;
 }
-#adminToursList .tour-item button {
+.admin-tour-item button {
   background: #dc3545;
   color: white;
   border: none;
@@ -266,6 +273,6 @@ button[type="submit"]:active { transform: scale(0.98); }
   cursor: pointer;
   font-size: 12px;
 }
-#adminToursList .tour-item button:hover {
+.admin-tour-item button:hover {
   background: #c82333;
 }

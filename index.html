@@ -4,16 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>SUP TIME — Бронирование</title>
-
-  <!-- Firebase compat SDK (порядок важен) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-
-  <!-- Telegram Web App -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-  <!-- Стили -->
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -22,19 +15,14 @@
     <!-- ЭКРАН 1: Приветствие -->
     <div id="greetingScreen" class="screen">
       <header>
-        <h1>🏄 SUP TIME Брянск</h1>
-        <p>Онлайн бронирование</p>
+        <h1>🏄 SUP TIME</h1>
+        <p>Забронируй сап-прогулку</p>
       </header>
       <div style="text-align: center; margin-top: 20px;">
         <p id="greetingMessage" style="font-size:18px; margin-bottom:20px;">👋 Привет!</p>
-        <button id="chooseTourBtn" class="main-btn">Забронировать</button>
-        <button id="myBookingsBtn" class="main-btn" style="margin-top:12px; background: var(--tg-theme-secondary-bg-color, #6c757d);">📋 Мои бронирования</button>
-
-        <!-- Кнопка "Админ" – отображается, только если пользователь уже в /admins -->
-        <button id="adminLoginBtn" class="main-btn hidden" style="margin-top:12px; background: var(--tg-theme-secondary-bg-color, #6c757d);">🔐 Админ</button>
-
-        <!-- Кнопка регистрации админа – показывается, если UID отсутствует в /admins (и временные правила это разрешают) -->
-        <button id="registerAdminBtn" class="main-btn hidden" style="margin-top:12px; background: #28a745;">🔧 Зарегистрироваться как админ</button>
+        <button id="chooseTourBtn" class="main-btn">Выбрать свою прогулку</button>
+        <button id="myBookingsBtn" class="main-btn" style="margin-top:12px; background: var(--tg-theme-secondary-bg-color, #6c757d);">📋 Мои прогулки</button>
+        <button id="adminLoginBtn" class="main-btn" style="margin-top:12px; background: var(--tg-theme-secondary-bg-color, #6c757d);">🔐 Админ</button>
       </div>
     </div>
 
@@ -49,19 +37,19 @@
       <div id="calendarContainer">
         <div id="daysGrid" class="days-grid"></div>
       </div>
-      <button onclick="showScreen('greetingScreen')" class="back-btn" style="margin-top:12px;">Назад</button>
+      <button onclick="showScreen('greetingScreen')" class="back-btn" style="margin-top:12px;">← Назад</button>
     </div>
 
     <!-- ЭКРАН 3: Список туров на выбранную дату -->
     <div id="toursScreen" class="screen" style="display:none;">
       <h2 style="text-align:center; margin-bottom:8px;">📋 Доступные прогулки</h2>
       <div id="toursList"></div>
-      <button onclick="showScreen('calendarScreen')" class="back-btn" style="margin-top:12px;">Назад</button>
+      <button onclick="showScreen('calendarScreen')" class="back-btn" style="margin-top:12px;">← Назад</button>
     </div>
 
     <!-- ЭКРАН 4: Форма бронирования -->
     <div id="bookingForm" class="screen" style="display:none;">
-      <h2 style="text-align:center; margin-bottom:8px;">✏️ Заполните свои данные</h2>
+      <h2 style="text-align:center; margin-bottom:8px;">✏️ Заполните данные</h2>
       <div id="tourInfo" style="margin-bottom:12px; font-weight:500; text-align:center;"></div>
       <form id="bookingFormInner">
         <input type="hidden" id="tourId" value="">
@@ -90,19 +78,15 @@
 
         <div id="statusMessage" style="margin:12px 0; text-align:center;"></div>
         <button type="submit" id="submitBtn">Забронировать</button>
-        <button type="button" onclick="showScreen('toursScreen')" class="back-btn" style="margin-top:12px;">Назад</button>
+        <button type="button" onclick="showScreen('toursScreen')" class="back-btn" style="margin-top:12px;">← Назад</button>
       </form>
     </div>
 
-    <!-- ЭКРАН 5: Мои бронирования -->
+    <!-- ЭКРАН 5: Мои прогулки -->
     <div id="myBookingsScreen" class="screen" style="display:none;">
-      <h2 style="text-align:center; margin-bottom:8px;">📋 Мои бронирования</h2>
-      <div style="margin-bottom:12px;">
-        <input type="tel" id="myPhoneInput" placeholder="Введите ваш телефон" style="width:100%; padding:10px; border-radius:10px; border:1px solid #ccc;">
-        <button id="loadMyBookingsBtn" class="main-btn" style="margin-top:8px; padding:10px; font-size:16px;">Показать</button>
-      </div>
+      <h2 style="text-align:center; margin-bottom:8px;">📋 Мои прогулки</h2>
       <div id="myBookingsList"></div>
-      <button onclick="showScreen('greetingScreen')" class="back-btn" style="margin-top:12px;">На главную</button>
+      <button onclick="showScreen('greetingScreen')" class="back-btn" style="margin-top:12px;">← Назад</button>
     </div>
 
     <!-- ЭКРАН 6: Админ-панель -->
@@ -110,6 +94,7 @@
       <h2 style="text-align:center; margin-bottom:8px;">🔧 Управление прогулками</h2>
       <button onclick="showScreen('greetingScreen')" class="back-btn" style="margin-bottom:16px;">← На главную</button>
 
+      <!-- Форма добавления тура -->
       <div style="background: var(--tg-theme-bg-color); padding:16px; border-radius:14px; margin-bottom:16px;">
         <h3 style="margin-bottom:8px;">➕ Добавить прогулку</h3>
         <div class="field">
@@ -140,9 +125,10 @@
           <label>Ссылка на карту (Яндекс)</label>
           <input type="url" id="adminMapUrl" placeholder="https://yandex.ru/maps/...">
         </div>
-        <button id="addTourBtn" class="main-btn" style="padding:12px; font-size:16px;">➕ Добавить прогулку</button>
+        <button id="addTourBtn" class="main-btn">➕ Добавить прогулку</button>
       </div>
 
+      <!-- Список существующих туров -->
       <div>
         <h3 style="margin-bottom:8px;">📋 Существующие прогулки</h3>
         <div id="adminToursList"></div>
@@ -150,8 +136,6 @@
     </div>
 
   </div>
-
-  <!-- Ваши скрипты -->
   <script src="firebase-config.js"></script>
   <script src="app.js"></script>
 </body>

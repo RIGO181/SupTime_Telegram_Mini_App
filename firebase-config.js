@@ -1,4 +1,3 @@
-// firebase-config.js
 const firebaseConfig = {
   apiKey: "AIzaSyCvbhVmnVZ2gpYJ4DYJN2nLK1j6fIknCEQ",
   authDomain: "suptimeadmin.firebaseapp.com",
@@ -10,9 +9,5 @@ const firebaseConfig = {
   measurementId: "G-TDJJ5NE7KP"
 };
 
-// Инициализация Firebase
 firebase.initializeApp(firebaseConfig);
-
-// Глобальные ссылки (compat-версия)
-window.database = firebase.database();
-window.auth = firebase.auth();
+const database = firebase.database();
