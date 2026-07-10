@@ -15,16 +15,13 @@ const myBookingsBtn = document.getElementById('myBookingsBtn');
 const adminLoginBtn = document.getElementById('adminLoginBtn');
 const greetingMessage = document.getElementById('greetingMessage');
 
-// Календарь
 const monthYear = document.getElementById('monthYear');
 const daysGrid = document.getElementById('daysGrid');
 const prevMonthBtn = document.getElementById('prevMonth');
 const nextMonthBtn = document.getElementById('nextMonth');
 
-// Туры
 const toursList = document.getElementById('toursList');
 
-// Форма бронирования
 const tourInfo = document.getElementById('tourInfo');
 const tourIdInput = document.getElementById('tourId');
 const maxSpotsInput = document.getElementById('maxSpots');
@@ -36,12 +33,10 @@ const commentInput = document.getElementById('comment');
 const form = document.getElementById('bookingFormInner');
 const statusDiv = document.getElementById('statusMessage');
 
-// Мои бронирования
 const myPhoneInput = document.getElementById('myPhoneInput');
 const loadMyBookingsBtn = document.getElementById('loadMyBookingsBtn');
 const myBookingsList = document.getElementById('myBookingsList');
 
-// Админ
 const adminDate = document.getElementById('adminDate');
 const adminTime = document.getElementById('adminTime');
 const adminRoute = document.getElementById('adminRoute');
@@ -60,8 +55,13 @@ let tours = [];
 let toursByDate = {};
 let currentMonth = new Date().getMonth();
 let currentYear = new Date().getFullYear();
-const ADMIN_TELEGRAM_ID = 611952; // Ваш Telegram ID
-const ADMIN_PASSWORD = 'admin123'; // Резервный пароль
+const ADMIN_TELEGRAM_ID = 611952;
+const ADMIN_PASSWORD = 'admin123';
+
+// Нормализация телефона: оставляем только цифры
+function normalizePhone(phone) {
+  return phone.replace(/\D/g, '');
+}
 
 // ============================================================
 // 3. ПОКАЗ ЭКРАНОВ
@@ -72,7 +72,6 @@ function showScreen(screenName) {
     const el = document.getElementById(id);
     if (el) el.style.display = (id === screenName) ? 'block' : 'none';
   });
-  // Если показываем приветствие, удаляем экран подтверждения (если есть)
   if (screenName === 'greetingScreen') {
     const confirmScreen = document.getElementById('confirmScreen');
     if (confirmScreen) confirmScreen.remove();
@@ -80,7 +79,7 @@ function showScreen(screenName) {
 }
 
 // ============================================================
-// 4. ЗАГРУЗКА ТУРОВ (для клиента)
+// 4. ЗАГРУЗКА ТУРОВ
 // ============================================================
 function loadTours() {
   console.log('🔄 loadTours вызвана');
@@ -203,12 +202,13 @@ function showBookingForm(tour) {
 }
 
 // ============================================================
-// 8. ОТПРАВКА БРОНИРОВАНИЯ (с обновлением клиента)
+// 8. ОТПРАВКА БРОНИРОВАНИЯ (с нормализацией)
 // ============================================================
 form.addEventListener('submit', function(e) {
   e.preventDefault();
   const name = nameInput.value.trim();
-  const phone = phoneInput.value.trim();
+  const rawPhone = phoneInput.value.trim();
+  const phone = normalizePhone(rawPhone);
   const boards = parseInt(boardsInput.value, 10);
   const comment = commentInput.value.trim();
   const tourId = tourIdInput.value;
@@ -286,7 +286,7 @@ form.addEventListener('submit', function(e) {
 });
 
 // ============================================================
-// 9. ПОДТВЕРЖДЕНИЕ (С КНОПКОЙ "НА ГЛАВНУЮ")
+// 9. ПОДТВЕРЖДЕНИЕ
 // ============================================================
 function showConfirmation(booking) {
   const tour = tours.find(t => t.id === booking.tourId);
@@ -306,9 +306,7 @@ function showConfirmation(booking) {
       ${routeDesc ? `<p style="margin-top:8px;">${routeDesc}</p>` : ''}
       ${mapUrl ? `<p><a href="${mapUrl}" target="_blank" style="color:var(--tg-theme-button-color, #0088cc);">📍 Открыть маршрут на карте</a></p>` : ''}
     </div>
-    <div style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
-      <button onclick="goHome()" class="back-btn" style="flex:1; background: var(--tg-theme-secondary-bg-color, #6c757d); color: white; border: none; padding:14px; border-radius:14px; font-size:18px; font-weight:700; cursor:pointer;">На главную</button>
-    </div>
+    <button onclick="goHome()" class="back-btn" style="margin-top:16px;">На главную</button>
   `;
   document.querySelectorAll('.screen').forEach(el => el.style.display = 'none');
   document.getElementById('app').appendChild(confirmScreen);
@@ -324,7 +322,8 @@ function goHome() {
 // 10. МОИ БРОНИРОВАНИЯ
 // ============================================================
 loadMyBookingsBtn.addEventListener('click', function() {
-  const phone = myPhoneInput.value.trim();
+  const rawPhone = myPhoneInput.value.trim();
+  const phone = normalizePhone(rawPhone);
   if (!phone) {
     alert('Введите ваш номер телефона');
     return;
@@ -361,13 +360,7 @@ function loadMyBookings(phone) {
           <div><strong>${booking.route}</strong></div>
           <div>${booking.date} в ${booking.time}</div>
           <div>Сапов: ${booking.boardsCount} | Сумма: ${booking.price} руб.</div>
-          <button class="cancel-btn" 
-                  data-id="${booking.id}" 
-                  data-tour="${booking.tourId}" 
-                  data-boards="${booking.boardsCount}" 
-                  data-phone="${booking.clientPhone}" 
-                  data-price="${booking.price}"
-                  ${canCancel ? '' : 'disabled'}>
+          <button class="cancel-btn" data-id="${booking.id}" data-tour="${booking.tourId}" data-boards="${booking.boardsCount}" data-phone="${booking.clientPhone}" data-price="${booking.price}" ${canCancel ? '' : 'disabled'}>
             ${canCancel ? '❌ Отменить' : 'Отмена недоступна (менее 2 дней). Свяжитесь с администратором.'}
           </button>
         `;
@@ -401,7 +394,7 @@ function canCancelBooking(date) {
 }
 
 // ============================================================
-// 11. ОТМЕНА БРОНИРОВАНИЯ (с обновлением туров и клиента)
+// 11. ОТМЕНА БРОНИРОВАНИЯ (с обновлением booked и клиента)
 // ============================================================
 function cancelBooking(bookingId, tourId, boards, clientPhone, bookingPrice) {
   if (!confirm('Вы уверены, что хотите отменить бронирование?')) return;
@@ -409,42 +402,37 @@ function cancelBooking(bookingId, tourId, boards, clientPhone, bookingPrice) {
   const bookingRef = database.ref(`bookings/${bookingId}`);
   bookingRef.remove()
     .then(() => {
-      // Обновляем booked в туре
+      // Обновляем booked
       const tourRef = database.ref(`tours/${tourId}/booked`);
       tourRef.transaction((current) => {
         return Math.max(0, (current || 0) - boards);
       });
 
-      // Локально обновляем для немедленного отображения
+      // Локально для мгновенного отображения
       const tour = tours.find(t => t.id === tourId);
       if (tour) {
         tour.booked = Math.max(0, (tour.booked || 0) - boards);
       }
 
-      // Обновляем статистику клиента
+      // Обновляем клиента
       if (clientPhone) {
-        const clientRef = database.ref(`clients/${clientPhone}`);
+        const normalized = normalizePhone(clientPhone);
+        const clientRef = database.ref(`clients/${normalized}`);
         clientRef.once('value').then(snap => {
           const client = snap.val();
           if (client) {
             const newVisits = Math.max(0, (client.totalVisits || 1) - 1);
             const newPaid = Math.max(0, (client.totalPaid || 0) - bookingPrice);
             let color = client.color || '';
-            if (color === 'gold' && newVisits < 5) {
-              color = '';
-            }
-            clientRef.update({
-              totalVisits: newVisits,
-              totalPaid: newPaid,
-              color: color
-            });
+            if (color === 'gold' && newVisits < 5) color = '';
+            clientRef.update({ totalVisits: newVisits, totalPaid: newPaid, color: color });
           }
         });
       }
 
       alert('✅ Бронирование отменено');
       const phone = myPhoneInput.value.trim();
-      if (phone) loadMyBookings(phone);
+      if (phone) loadMyBookings(normalizePhone(phone));
     })
     .catch(err => {
       alert('❌ Ошибка отмены: ' + err.message);
@@ -562,18 +550,17 @@ addTourBtn.addEventListener('click', function() {
     .catch(err => alert('❌ Ошибка: ' + err.message));
 });
 
-// ============================================================
 // 13. КНОПКИ ГЛАВНОГО ЭКРАНА
 // ============================================================
-chooseTourBtn.addEventListener('click', function() {
+chooseTourBtn.addEventListener('click', () => {
   showScreen('calendarScreen');
   loadTours();
 });
 
-myBookingsBtn.addEventListener('click', function() {
+myBookingsBtn.addEventListener('click', () => {
   showScreen('myBookingsScreen');
-  const phone = myPhoneInput.value.trim();
-  if (phone) loadMyBookings(phone);
+  const rawPhone = myPhoneInput.value.trim();
+  if (rawPhone) loadMyBookings(normalizePhone(rawPhone));
 });
 
 // ============================================================
