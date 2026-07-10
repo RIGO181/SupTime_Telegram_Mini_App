@@ -13,6 +13,7 @@ if (tg) {
 const chooseTourBtn = document.getElementById('chooseTourBtn');
 const myBookingsBtn = document.getElementById('myBookingsBtn');
 const adminLoginBtn = document.getElementById('adminLoginBtn');
+const registerAdminBtn = document.getElementById('registerAdminBtn');
 const greetingMessage = document.getElementById('greetingMessage');
 
 const monthYear = document.getElementById('monthYear');
@@ -79,20 +80,33 @@ waitForFirebase(() => {
   });
 
   window.auth.onAuthStateChanged(user => {
-  if (user) {
-    // Показываем UID во всплывающем окне, чтобы точно увидеть
-    alert('Ваш Firebase UID (скопируйте его):\n\n' + user.uid);
-    
-    // Также оставляем вывод в консоль и на экран
-    console.log('UID:', user.uid);
-    const uidDisplay = document.createElement('div');
-    uidDisplay.id = 'uidDisplay';
-    uidDisplay.textContent = 'Ваш UID: ' + user.uid;
-    uidDisplay.style.cssText = '...';
-    document.getElementById('greetingScreen').appendChild(uidDisplay);
-    
-    initApp();
-  }
+    if (user) {
+      console.log('Аутентифицирован, UID:', user.uid);
+
+      // Показываем UID прямо на главном экране
+      const uidDisplay = document.createElement('div');
+      uidDisplay.id = 'uidDisplay';
+      uidDisplay.textContent = 'Ваш UID: ' + user.uid;
+      uidDisplay.style.cssText =
+        'margin-top: 16px; padding: 12px; background: #fff3cd; border-radius: 10px; word-break: break-all; text-align: center; font-size: 14px;';
+      document.getElementById('greetingScreen').appendChild(uidDisplay);
+
+      // Проверяем, является ли пользователь администратором
+      window.database.ref(`admins/${user.uid}`).once('value').then(snap => {
+        if (snap.exists()) {
+          if (adminLoginBtn) adminLoginBtn.style.display = 'block';
+          if (registerAdminBtn) registerAdminBtn.style.display = 'none';
+        } else {
+          if (registerAdminBtn) registerAdminBtn.style.display = 'block';
+        }
+      });
+
+      // Запускаем основное приложение
+      initApp();
+    } else {
+      console.log('Не аутентифицирован');
+    }
+  });
 });
 
 // ============================================================
@@ -342,7 +356,6 @@ function initApp() {
     document.getElementById('app').appendChild(confirmScreen);
   }
 
-  // Глобальная функция для кнопки "На главную"
   window.goHome = function() {
     const confirmScreen = document.getElementById('confirmScreen');
     if (confirmScreen) confirmScreen.remove();
@@ -472,25 +485,27 @@ function initApp() {
       });
   }
 
-  // 4.9. АДМИН-ПАНЕЛЬ
-  function isAdmin() {
-    if (!currentUser) return false;
-    return currentUser.id === ADMIN_TELEGRAM_ID;
+  // 4.9. КНОПКА "ЗАРЕГИСТРИРОВАТЬ КАК АДМИН"
+  if (registerAdminBtn) {
+    registerAdminBtn.addEventListener('click', async () => {
+      const user = window.auth.currentUser;
+      if (!user) {
+        alert('Вы не аутентифицированы');
+        return;
+      }
+      try {
+        await window.database.ref('admins/' + user.uid).set(true);
+        alert('✅ Ваш UID добавлен в администраторы! Теперь можно управлять.');
+        registerAdminBtn.style.display = 'none';
+        if (adminLoginBtn) adminLoginBtn.style.display = 'block';
+      } catch (err) {
+        alert('❌ Ошибка: ' + err.message);
+      }
+    });
   }
 
-  if (adminLoginBtn) {
-    if (isAdmin()) {
-      adminLoginBtn.style.display = 'block';
-    } else {
-      adminLoginBtn.style.display = 'none';
-    }
-  }
-
+  // 4.10. АДМИН-ПАНЕЛЬ
   adminLoginBtn.addEventListener('click', function() {
-    if (!isAdmin()) {
-      alert('У вас нет прав администратора');
-      return;
-    }
     const password = prompt('Введите пароль администратора:');
     if (password === ADMIN_PASSWORD) {
       showScreen('adminScreen');
@@ -581,7 +596,7 @@ function initApp() {
       .catch(err => alert('❌ Ошибка: ' + err.message));
   });
 
-  // 4.10. КНОПКИ ГЛАВНОГО ЭКРАНА
+  // 4.11. КНОПКИ ГЛАВНОГО ЭКРАНА
   chooseTourBtn.addEventListener('click', () => {
     showScreen('calendarScreen');
     loadTours();
@@ -593,14 +608,14 @@ function initApp() {
     if (rawPhone) loadMyBookings(normalizePhone(rawPhone));
   });
 
-  // 4.11. ПРИВЕТСТВИЕ
+  // 4.12. ПРИВЕТСТВИЕ
   if (currentUser && currentUser.first_name && greetingMessage) {
     greetingMessage.textContent = `👋 Привет, ${currentUser.first_name}!`;
   }
 
   showScreen('greetingScreen');
 
-  // 4.12. НАВИГАЦИЯ КАЛЕНДАРЯ
+  // 4.13. НАВИГАЦИЯ КАЛЕНДАРЯ
   prevMonthBtn.addEventListener('click', () => {
     if (currentMonth === 0) { currentMonth = 11; currentYear--; } else { currentMonth--; }
     renderCalendar();
