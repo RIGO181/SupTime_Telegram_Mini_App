@@ -7,7 +7,6 @@ const firebaseConfig = {
   storageBucket: "suptimeadmin.firebasestorage.app",
   messagingSenderId: "673812450955",
   appId: "1:673812450955:web:45baefaa5038a167938e8e",
-  measurementId: "G-TDJJ5NE7KP"
 };
 
 // Инициализация Firebase
@@ -19,3 +18,4 @@ const newBookingRef = database.ref('bookings').push();
 newBookingRef.set(bookingData).then(() => {
     // успешно
 });
+
