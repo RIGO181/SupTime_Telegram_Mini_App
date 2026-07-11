@@ -1,19 +1,63 @@
 // app.js
 (function() {
-  // ========== Telegram WebApp инициализация ==========
-  const tg = window.Telegram?.WebApp;
+  // ========== Получение данных пользователя Telegram ==========
   let userId = null;
   let userName = 'любитель сапсёрфинга';
   let isAdmin = false;
 
+  // Сначала стандартный способ
+  const tg = window.Telegram?.WebApp;
   if (tg) {
     tg.ready();
     userId = tg.initDataUnsafe?.user?.id;
     userName = tg.initDataUnsafe?.user?.first_name || userName;
-    // ID администраторов (замените на реальные)
-    const ADMIN_IDS = [611952]; //через запятую добавить ID телеграмм
-    isAdmin = ADMIN_IDS.includes(userId);
+    console.log('Telegram WebApp API доступен, userId:', userId);
   }
+
+  // Если не получилось – пробуем извлечь из URL (актуально для браузерной версии)
+  if (!userId) {
+    console.log('Пытаемся получить userId из URL...');
+    const urlParams = new URLSearchParams(window.location.search);
+    let initDataStr = urlParams.get('tgWebAppData'); // иногда передаётся так
+    if (!initDataStr) {
+      // Иногда данные в хеше
+      const hash = window.location.hash.substring(1);
+      const hashParams = new URLSearchParams(hash);
+      initDataStr = hashParams.get('tgWebAppData');
+    }
+    if (initDataStr) {
+      try {
+        const params = new URLSearchParams(initDataStr);
+        const userStr = params.get('user');
+        if (userStr) {
+          const user = JSON.parse(userStr);
+          userId = user.id;
+          userName = user.first_name || userName;
+          console.log('userId извлечён из URL:', userId);
+        }
+      } catch (e) {
+        console.error('Ошибка парсинга initData:', e);
+      }
+    }
+  }
+
+  // ID администраторов (замените на свои)
+  const ADMIN_IDS = [611952]; // ваш ID
+  isAdmin = ADMIN_IDS.includes(userId);
+
+  // ---------- ОТЛАДОЧНЫЙ БЛОК ----------
+  // Показываем окно с диагностикой при загрузке (уберите после тестирования)
+  const debugInfo = `
+    Telegram API доступен: ${!!tg}
+    userId: ${userId}
+    userName: ${userName}
+    ADMIN_IDS: ${JSON.stringify(ADMIN_IDS)}
+    isAdmin: ${isAdmin}
+    URL: ${window.location.href}
+  `;
+  alert('Отладка:\n' + debugInfo);
+  console.log(debugInfo);
+  // ------------------------------------
 
   // ========== DOM элементы ==========
   const screens = {
@@ -34,7 +78,6 @@
   // Обработчики кнопок "Назад"
   document.querySelectorAll('.back-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      // Определяем, куда возвращаться, можно просто на главный экран
       showScreen(screens.main);
     });
   });
@@ -71,7 +114,6 @@
     const calendarDiv = document.getElementById('calendar');
     calendarDiv.innerHTML = '';
 
-    // Заголовки дней недели
     const daysOfWeek = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
     daysOfWeek.forEach(day => {
       const dayHeader = document.createElement('div');
@@ -80,17 +122,14 @@
       calendarDiv.appendChild(dayHeader);
     });
 
-    // Загрузка дат со слотами
     const scheduleSnap = await db.ref('schedule').once('value');
     const schedule = scheduleSnap.val() || {};
     const datesWithSlots = new Set(Object.keys(schedule));
 
-    // Дни текущего месяца
-    const firstDay = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Вс
+    const firstDay = new Date(currentYear, currentMonth, 1).getDay();
     const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const startOffset = firstDay === 0 ? 6 : firstDay - 1;
 
-    // Пустые ячейки перед первым днём
-    const startOffset = firstDay === 0 ? 6 : firstDay - 1; // Пн = 0
     for (let i = 0; i < startOffset; i++) {
       const emptyCell = document.createElement('div');
       emptyCell.className = 'calendar-day day-empty';
@@ -127,7 +166,7 @@
     loadSlots(date);
   }
 
-  // ========== Слоты (прогулки) на дату ==========
+  // ========== Слоты ==========
   let selectedDate = null;
   async function loadSlots(date) {
     const slotsList = document.getElementById('slots-list');
@@ -141,7 +180,6 @@
     const slots = scheduleSnap.val() || {};
     const bookings = bookingsSnap.val() || {};
 
-    // Подсчёт занятых мест по времени
     const occupied = {};
     for (let id in bookings) {
       const b = bookings[id];
@@ -226,7 +264,6 @@
       return;
     }
 
-    // Проверка свободных мест (ещё раз)
     const bookingsSnap = await db.ref('bookings')
       .orderByChild('date').equalTo(selectedDate).once('value');
     const bookings = bookingsSnap.val() || {};
@@ -236,13 +273,12 @@
         booked += bookings[id].boardsCount || 0;
       }
     }
-    const maxBoards = 14; // или из слота, если хотите динамически
+    const maxBoards = 14;
     if (booked + boardsCount > maxBoards) {
       document.getElementById('form-error').textContent = `Недостаточно мест. Свободно: ${maxBoards - booked}`;
       return;
     }
 
-    // Сохранение бронирования
     const bookingData = {
       clientName,
       clientPhone,
@@ -264,16 +300,13 @@
       const newRef = db.ref('bookings').push();
       await newRef.set(bookingData);
 
-      // Обновление данных клиента (телеграм-пользователя)
       if (userId) {
         await db.ref(`telegramUsers/${userId}`).set({
           phone: clientPhone,
-          name: clientName,
-          chatId: tg?.initDataUnsafe?.user?.id // предположим, chatId такой же (надо уточнить)
+          name: clientName
         });
       }
 
-      // Обновление clients (как в Android)
       const clientRef = db.ref(`clients/${clientPhone}`);
       const clientSnap = await clientRef.once('value');
       const clientData = clientSnap.val() || {};
@@ -327,7 +360,6 @@
       }
     }
 
-    // Сортировка
     upcoming.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
     past.sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
 
@@ -370,10 +402,8 @@
       const booking = bookingSnap.val();
       if (!booking) return;
 
-      // Удаление бронирования
       await bookingRef.remove();
 
-      // Обновление счётчиков клиента
       const phone = booking.clientPhone;
       const clientRef = db.ref(`clients/${phone}`);
       const clientSnap = await clientRef.once('value');
@@ -386,13 +416,12 @@
       });
 
       alert('Бронирование отменено');
-      loadMyBookings(); // обновить список
+      loadMyBookings();
     } catch (error) {
       alert('Ошибка отмены: ' + error.message);
     }
   }
 
-  // Переключение вкладок
   document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', function() {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -408,7 +437,6 @@
     const container = document.getElementById('admin-slots-list');
     container.innerHTML = '<p>Загрузка расписания...</p>';
 
-    // Загружаем все слоты (можно ограничить будущими датами)
     const scheduleSnap = await db.ref('schedule').once('value');
     const schedule = scheduleSnap.val() || {};
 
@@ -438,7 +466,6 @@
     }
   }
 
-  // Кнопка добавления слота
   document.getElementById('btn-add-slot').addEventListener('click', () => {
     document.getElementById('modal-title').textContent = 'Добавить слот';
     document.getElementById('slot-date').value = '';
@@ -462,12 +489,10 @@
     }
   }
 
-  // Закрытие модального окна
   document.querySelector('.modal .close').addEventListener('click', () => {
     document.getElementById('slot-modal').style.display = 'none';
   });
 
-  // Сохранение слота
   document.getElementById('btn-save-slot').addEventListener('click', async () => {
     const date = document.getElementById('slot-date').value;
     const time = document.getElementById('slot-time').value;
@@ -494,7 +519,6 @@
     }
   });
 
-  // Просмотр записей (админ)
   document.getElementById('btn-view-bookings').addEventListener('click', async () => {
     const container = document.getElementById('admin-bookings-list');
     container.style.display = 'block';
