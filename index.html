@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>SUP TIME</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Главный экран -->
+  <div id="main-screen" class="screen active">
+    <img src="logo.png" alt="SUP TIME" class="logo">
+    <h2 id="greeting">Добро пожаловать!</h2>
+    <button id="btn-book" class="btn-primary">Записаться на прогулку</button>
+    <button id="btn-my-bookings" class="btn-secondary">Мои прогулки</button>
+    <button id="btn-admin" class="btn-admin" style="display:none;">Управление прогулками</button>
+  </div>
+
+  <!-- Календарь -->
+  <div id="calendar-screen" class="screen">
+    <div class="header">
+      <button class="back-btn">&larr; Назад</button>
+      <h3>Выберите дату</h3>
+    </div>
+    <div id="calendar"></div>
+  </div>
+
+  <!-- Слоты (прогулки) на выбранный день -->
+  <div id="slots-screen" class="screen">
+    <div class="header">
+      <button class="back-btn">&larr; Назад</button>
+      <h3 id="slots-date"></h3>
+    </div>
+    <div id="slots-list"></div>
+  </div>
+
+  <!-- Форма бронирования -->
+  <div id="booking-form-screen" class="screen">
+    <div class="header">
+      <button class="back-btn">&larr; Назад</button>
+      <h3>Бронирование</h3>
+    </div>
+    <form id="booking-form">
+      <input type="text" id="client-name" placeholder="Ваше имя" required>
+      <input type="tel" id="client-phone" placeholder="Телефон" required>
+      <label>Количество сапов:</label>
+      <input type="number" id="boards-count" min="1" max="14" value="1" required>
+      <label class="checkbox-label">
+        <input type="checkbox" id="has-children"> С детьми
+      </label>
+      <div id="children-block" style="display:none;">
+        <label>Количество детей:</label>
+        <input type="number" id="child-count" min="1" value="1">
+      </div>
+      <textarea id="comment" placeholder="Комментарий (необязательно)"></textarea>
+      <button type="submit" class="btn-primary">Забронировать</button>
+      <div id="form-error" class="error-msg"></div>
+    </form>
+  </div>
+
+  <!-- Мои прогулки -->
+  <div id="my-bookings-screen" class="screen">
+    <div class="header">
+      <button class="back-btn">&larr; Назад</button>
+      <h3>Мои прогулки</h3>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-tab="upcoming">Предстоящие</button>
+      <button class="tab" data-tab="past">Архив</button>
+    </div>
+    <div id="bookings-upcoming" class="bookings-list"></div>
+    <div id="bookings-past" class="bookings-list" style="display:none;"></div>
+  </div>
+
+  <!-- Админ-панель -->
+  <div id="admin-screen" class="screen">
+    <div class="header">
+      <button class="back-btn">&larr; Назад</button>
+      <h3>Управление прогулками</h3>
+    </div>
+    <div class="admin-controls">
+      <button id="btn-add-slot" class="btn-primary">+ Добавить слот</button>
+      <button id="btn-view-bookings" class="btn-secondary">Показать записи</button>
+    </div>
+    <div id="admin-slots-list"></div>
+    <div id="admin-bookings-list" style="display:none;"></div>
+  </div>
+
+  <!-- Модальное окно для добавления/редактирования слота -->
+  <div id="slot-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <span class="close">&times;</span>
+      <h3 id="modal-title">Добавить слот</h3>
+      <input type="date" id="slot-date">
+      <input type="time" id="slot-time">
+      <select id="slot-route"></select>
+      <select id="slot-duration">
+        <option value="2,5 часа">2,5 часа</option>
+        <option value="2,5-3 часа">2,5-3 часа</option>
+        <option value="1-1,5 часа">1-1,5 часа</option>
+      </select>
+      <input type="number" id="slot-price" placeholder="Цена (руб)" value="1700">
+      <button id="btn-save-slot" class="btn-primary">Сохранить</button>
+      <div id="slot-error" class="error-msg"></div>
+    </div>
+  </div>
+
+  <!-- Скрипты -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,513 @@
+// app.js
+(function() {
+  // ========== Telegram WebApp инициализация ==========
+  const tg = window.Telegram?.WebApp;
+  let userId = null;
+  let userName = 'любитель сапсёрфинга';
+  let isAdmin = false;
+
+  if (tg) {
+    tg.ready();
+    userId = tg.initDataUnsafe?.user?.id;
+    userName = tg.initDataUnsafe?.user?.first_name || userName;
+    // ID администраторов (замените на реальные)
+    const ADMIN_IDS = [611952]; //через запятую добавить ID телеграмм
+    isAdmin = ADMIN_IDS.includes(userId);
+  }
+
+  // ========== DOM элементы ==========
+  const screens = {
+    main: document.getElementById('main-screen'),
+    calendar: document.getElementById('calendar-screen'),
+    slots: document.getElementById('slots-screen'),
+    bookingForm: document.getElementById('booking-form-screen'),
+    myBookings: document.getElementById('my-bookings-screen'),
+    admin: document.getElementById('admin-screen')
+  };
+
+  // ========== Навигация ==========
+  function showScreen(screen) {
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screen.classList.add('active');
+  }
+
+  // Обработчики кнопок "Назад"
+  document.querySelectorAll('.back-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Определяем, куда возвращаться, можно просто на главный экран
+      showScreen(screens.main);
+    });
+  });
+
+  // ========== Главный экран ==========
+  document.getElementById('greeting').textContent = `Привет, ${userName}!`;
+
+  if (isAdmin) {
+    document.getElementById('btn-admin').style.display = 'block';
+  }
+
+  document.getElementById('btn-book').addEventListener('click', () => {
+    showScreen(screens.calendar);
+    loadCalendar();
+  });
+
+  document.getElementById('btn-my-bookings').addEventListener('click', () => {
+    showScreen(screens.myBookings);
+    loadMyBookings();
+  });
+
+  if (isAdmin) {
+    document.getElementById('btn-admin').addEventListener('click', () => {
+      showScreen(screens.admin);
+      loadAdminSlots();
+    });
+  }
+
+  // ========== Календарь ==========
+  let currentMonth = new Date().getMonth();
+  let currentYear = new Date().getFullYear();
+
+  async function loadCalendar() {
+    const calendarDiv = document.getElementById('calendar');
+    calendarDiv.innerHTML = '';
+
+    // Заголовки дней недели
+    const daysOfWeek = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+    daysOfWeek.forEach(day => {
+      const dayHeader = document.createElement('div');
+      dayHeader.className = 'calendar-day-header';
+      dayHeader.textContent = day;
+      calendarDiv.appendChild(dayHeader);
+    });
+
+    // Загрузка дат со слотами
+    const scheduleSnap = await db.ref('schedule').once('value');
+    const schedule = scheduleSnap.val() || {};
+    const datesWithSlots = new Set(Object.keys(schedule));
+
+    // Дни текущего месяца
+    const firstDay = new Date(currentYear, currentMonth, 1).getDay(); // 0 = Вс
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+
+    // Пустые ячейки перед первым днём
+    const startOffset = firstDay === 0 ? 6 : firstDay - 1; // Пн = 0
+    for (let i = 0; i < startOffset; i++) {
+      const emptyCell = document.createElement('div');
+      emptyCell.className = 'calendar-day day-empty';
+      calendarDiv.appendChild(emptyCell);
+    }
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+      const dayCell = document.createElement('div');
+      dayCell.className = 'calendar-day';
+      dayCell.textContent = day;
+
+      const date = new Date(currentYear, currentMonth, day);
+      if (date < today) {
+        dayCell.classList.add('day-unavailable');
+      } else if (datesWithSlots.has(dateStr)) {
+        dayCell.classList.add('day-available');
+        dayCell.addEventListener('click', () => openSlotsForDate(dateStr));
+      } else {
+        dayCell.classList.add('day-unavailable');
+      }
+
+      calendarDiv.appendChild(dayCell);
+    }
+  }
+
+  function openSlotsForDate(date) {
+    selectedDate = date;
+    document.getElementById('slots-date').textContent = date;
+    showScreen(screens.slots);
+    loadSlots(date);
+  }
+
+  // ========== Слоты (прогулки) на дату ==========
+  let selectedDate = null;
+  async function loadSlots(date) {
+    const slotsList = document.getElementById('slots-list');
+    slotsList.innerHTML = '<p>Загрузка...</p>';
+
+    const [scheduleSnap, bookingsSnap] = await Promise.all([
+      db.ref(`schedule/${date}`).once('value'),
+      db.ref('bookings').orderByChild('date').equalTo(date).once('value')
+    ]);
+
+    const slots = scheduleSnap.val() || {};
+    const bookings = bookingsSnap.val() || {};
+
+    // Подсчёт занятых мест по времени
+    const occupied = {};
+    for (let id in bookings) {
+      const b = bookings[id];
+      const time = b.time;
+      if (!occupied[time]) occupied[time] = 0;
+      occupied[time] += b.boardsCount || 0;
+    }
+
+    slotsList.innerHTML = '';
+    const times = Object.keys(slots).sort();
+    if (times.length === 0) {
+      slotsList.innerHTML = '<p>Нет доступных прогулок на эту дату.</p>';
+      return;
+    }
+
+    times.forEach(time => {
+      const slot = slots[time];
+      const maxBoards = slot.maxBoards || 14;
+      const booked = occupied[time] || 0;
+      const free = maxBoards - booked;
+
+      const card = document.createElement('div');
+      card.className = 'slot-card';
+      card.innerHTML = `
+        <div class="slot-time">${time}</div>
+        <div class="slot-route">${slot.route}</div>
+        <div class="slot-duration">${slot.duration || ''}</div>
+        <div class="slot-availability ${free <= 0 ? 'slot-full' : ''}">
+          Свободно: ${free} / ${maxBoards}
+        </div>
+      `;
+
+      if (free > 0) {
+        card.addEventListener('click', () => openBookingForm(date, time, slot));
+      } else {
+        card.style.opacity = '0.6';
+      }
+
+      slotsList.appendChild(card);
+    });
+  }
+
+  // ========== Форма бронирования ==========
+  let selectedTime = null;
+  let selectedRoute = null;
+  let selectedPrice = null;
+
+  function openBookingForm(date, time, slot) {
+    selectedDate = date;
+    selectedTime = time;
+    selectedRoute = slot.route;
+    selectedPrice = slot.price || 1700;
+
+    document.getElementById('booking-form').reset();
+    document.getElementById('boards-count').value = 1;
+    document.getElementById('has-children').checked = false;
+    document.getElementById('children-block').style.display = 'none';
+    document.getElementById('form-error').textContent = '';
+    showScreen(screens.bookingForm);
+  }
+
+  document.getElementById('has-children').addEventListener('change', function() {
+    document.getElementById('children-block').style.display = this.checked ? 'block' : 'none';
+  });
+
+  document.getElementById('booking-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const clientName = document.getElementById('client-name').value.trim();
+    const clientPhone = document.getElementById('client-phone').value.trim();
+    const boardsCount = parseInt(document.getElementById('boards-count').value);
+    const hasChildren = document.getElementById('has-children').checked;
+    const childCount = hasChildren ? parseInt(document.getElementById('child-count').value) || 0 : 0;
+    const comment = document.getElementById('comment').value.trim();
+
+    if (!clientName || !clientPhone) {
+      document.getElementById('form-error').textContent = 'Заполните имя и телефон';
+      return;
+    }
+    if (boardsCount < 1 || boardsCount > 14) {
+      document.getElementById('form-error').textContent = 'Количество сапов от 1 до 14';
+      return;
+    }
+
+    // Проверка свободных мест (ещё раз)
+    const bookingsSnap = await db.ref('bookings')
+      .orderByChild('date').equalTo(selectedDate).once('value');
+    const bookings = bookingsSnap.val() || {};
+    let booked = 0;
+    for (let id in bookings) {
+      if (bookings[id].time === selectedTime) {
+        booked += bookings[id].boardsCount || 0;
+      }
+    }
+    const maxBoards = 14; // или из слота, если хотите динамически
+    if (booked + boardsCount > maxBoards) {
+      document.getElementById('form-error').textContent = `Недостаточно мест. Свободно: ${maxBoards - booked}`;
+      return;
+    }
+
+    // Сохранение бронирования
+    const bookingData = {
+      clientName,
+      clientPhone,
+      date: selectedDate,
+      time: selectedTime,
+      route: selectedRoute,
+      boardsCount,
+      price: selectedPrice * boardsCount,
+      isChild: hasChildren,
+      childCount,
+      comment,
+      createdBy: userId || null,
+      createdAt: Date.now(),
+      isReservation: false,
+      isPaid: false
+    };
+
+    try {
+      const newRef = db.ref('bookings').push();
+      await newRef.set(bookingData);
+
+      // Обновление данных клиента (телеграм-пользователя)
+      if (userId) {
+        await db.ref(`telegramUsers/${userId}`).set({
+          phone: clientPhone,
+          name: clientName,
+          chatId: tg?.initDataUnsafe?.user?.id // предположим, chatId такой же (надо уточнить)
+        });
+      }
+
+      // Обновление clients (как в Android)
+      const clientRef = db.ref(`clients/${clientPhone}`);
+      const clientSnap = await clientRef.once('value');
+      const clientData = clientSnap.val() || {};
+      const totalVisits = (clientData.totalVisits || 0) + 1;
+      const totalPaid = (clientData.totalPaid || 0) + (selectedPrice * boardsCount);
+      await clientRef.update({
+        phone: clientPhone,
+        name: clientName,
+        totalVisits,
+        totalPaid,
+        color: clientData.color || ''
+      });
+
+      alert('Бронирование успешно!');
+      showScreen(screens.main);
+    } catch (error) {
+      document.getElementById('form-error').textContent = 'Ошибка сохранения: ' + error.message;
+    }
+  });
+
+  // ========== Мои прогулки ==========
+  async function loadMyBookings() {
+    if (!userId) {
+      document.getElementById('bookings-upcoming').innerHTML = '<p>Не удалось определить пользователя.</p>';
+      return;
+    }
+
+    const userSnap = await db.ref(`telegramUsers/${userId}`).once('value');
+    const userData = userSnap.val();
+    const phone = userData?.phone;
+    if (!phone) {
+      document.getElementById('bookings-upcoming').innerHTML = '<p>У вас пока нет бронирований.</p>';
+      return;
+    }
+
+    const bookingsSnap = await db.ref('bookings')
+      .orderByChild('clientPhone').equalTo(phone).once('value');
+    const bookings = bookingsSnap.val() || {};
+
+    const now = new Date();
+    const upcoming = [];
+    const past = [];
+
+    for (let id in bookings) {
+      const b = bookings[id];
+      const bookingTime = new Date(`${b.date}T${b.time}:00`);
+      if (bookingTime > now) {
+        upcoming.push({ id, ...b });
+      } else {
+        past.push({ id, ...b });
+      }
+    }
+
+    // Сортировка
+    upcoming.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+    past.sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+
+    renderBookingsList('bookings-upcoming', upcoming, true);
+    renderBookingsList('bookings-past', past, false);
+  }
+
+  function renderBookingsList(containerId, bookings, showCancel) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+    if (bookings.length === 0) {
+      container.innerHTML = '<p>Нет прогулок</p>';
+      return;
+    }
+
+    bookings.forEach(b => {
+      const item = document.createElement('div');
+      item.className = 'booking-item';
+      const canCancel = showCancel && (new Date(`${b.date}T${b.time}:00`) - Date.now() > 24 * 60 * 60 * 1000);
+      item.innerHTML = `
+        <div class="booking-info">
+          <div class="booking-date">${b.date} в ${b.time}</div>
+          <div class="booking-route">${b.route}</div>
+          <div class="booking-details">Сапов: ${b.boardsCount} | ${b.isChild ? 'Детей: '+b.childCount : ''} | ${b.price} руб.</div>
+        </div>
+        ${canCancel ? '<button class="cancel-btn">Отменить</button>' : ''}
+      `;
+      if (canCancel) {
+        item.querySelector('.cancel-btn').addEventListener('click', () => cancelBooking(b.id));
+      }
+      container.appendChild(item);
+    });
+  }
+
+  async function cancelBooking(bookingId) {
+    if (!confirm('Вы уверены, что хотите отменить бронирование?')) return;
+    try {
+      const bookingRef = db.ref(`bookings/${bookingId}`);
+      const bookingSnap = await bookingRef.once('value');
+      const booking = bookingSnap.val();
+      if (!booking) return;
+
+      // Удаление бронирования
+      await bookingRef.remove();
+
+      // Обновление счётчиков клиента
+      const phone = booking.clientPhone;
+      const clientRef = db.ref(`clients/${phone}`);
+      const clientSnap = await clientRef.once('value');
+      const clientData = clientSnap.val() || {};
+      const newTotalVisits = Math.max((clientData.totalVisits || 1) - 1, 0);
+      const newTotalPaid = Math.max((clientData.totalPaid || 0) - (booking.price || 0), 0);
+      await clientRef.update({
+        totalVisits: newTotalVisits,
+        totalPaid: newTotalPaid
+      });
+
+      alert('Бронирование отменено');
+      loadMyBookings(); // обновить список
+    } catch (error) {
+      alert('Ошибка отмены: ' + error.message);
+    }
+  }
+
+  // Переключение вкладок
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      this.classList.add('active');
+      const tabName = this.dataset.tab;
+      document.getElementById('bookings-upcoming').style.display = tabName === 'upcoming' ? 'block' : 'none';
+      document.getElementById('bookings-past').style.display = tabName === 'past' ? 'block' : 'none';
+    });
+  });
+
+  // ========== Админ-панель ==========
+  async function loadAdminSlots() {
+    const container = document.getElementById('admin-slots-list');
+    container.innerHTML = '<p>Загрузка расписания...</p>';
+
+    // Загружаем все слоты (можно ограничить будущими датами)
+    const scheduleSnap = await db.ref('schedule').once('value');
+    const schedule = scheduleSnap.val() || {};
+
+    container.innerHTML = '';
+    const dates = Object.keys(schedule).sort();
+    for (const date of dates) {
+      const times = Object.keys(schedule[date]).sort();
+      for (const time of times) {
+        const slot = schedule[date][time];
+        const item = document.createElement('div');
+        item.className = 'slot-item';
+        item.innerHTML = `
+          <div>
+            <strong>${date} ${time}</strong> - ${slot.route}<br>
+            <small>Цена: ${slot.price} руб., Длит: ${slot.duration || ''}</small>
+          </div>
+          <button class="delete-slot-btn" data-date="${date}" data-time="${time}">Удалить</button>
+        `;
+        item.querySelector('.delete-slot-btn').addEventListener('click', (e) => {
+          const date = e.target.dataset.date;
+          const time = e.target.dataset.time;
+          db.ref(`schedule/${date}/${time}`).remove()
+            .then(() => loadAdminSlots());
+        });
+        container.appendChild(item);
+      }
+    }
+  }
+
+  // Кнопка добавления слота
+  document.getElementById('btn-add-slot').addEventListener('click', () => {
+    document.getElementById('modal-title').textContent = 'Добавить слот';
+    document.getElementById('slot-date').value = '';
+    document.getElementById('slot-time').value = '';
+    document.getElementById('slot-price').value = 1700;
+    document.getElementById('slot-error').textContent = '';
+    loadRoutesSelect();
+    document.getElementById('slot-modal').style.display = 'flex';
+  });
+
+  async function loadRoutesSelect() {
+    const select = document.getElementById('slot-route');
+    select.innerHTML = '';
+    const snap = await db.ref('routes').once('value');
+    const routes = snap.val() || {};
+    for (let id in routes) {
+      const option = document.createElement('option');
+      option.value = routes[id].name;
+      option.textContent = routes[id].name;
+      select.appendChild(option);
+    }
+  }
+
+  // Закрытие модального окна
+  document.querySelector('.modal .close').addEventListener('click', () => {
+    document.getElementById('slot-modal').style.display = 'none';
+  });
+
+  // Сохранение слота
+  document.getElementById('btn-save-slot').addEventListener('click', async () => {
+    const date = document.getElementById('slot-date').value;
+    const time = document.getElementById('slot-time').value;
+    const route = document.getElementById('slot-route').value;
+    const duration = document.getElementById('slot-duration').value;
+    const price = parseInt(document.getElementById('slot-price').value) || 1700;
+
+    if (!date || !time || !route) {
+      document.getElementById('slot-error').textContent = 'Заполните все поля';
+      return;
+    }
+
+    try {
+      await db.ref(`schedule/${date}/${time}`).set({
+        route,
+        duration,
+        price,
+        maxBoards: 14
+      });
+      document.getElementById('slot-modal').style.display = 'none';
+      loadAdminSlots();
+    } catch (error) {
+      document.getElementById('slot-error').textContent = 'Ошибка: ' + error.message;
+    }
+  });
+
+  // Просмотр записей (админ)
+  document.getElementById('btn-view-bookings').addEventListener('click', async () => {
+    const container = document.getElementById('admin-bookings-list');
+    container.style.display = 'block';
+    container.innerHTML = '<p>Загрузка...</p>';
+
+    const bookingsSnap = await db.ref('bookings').once('value');
+    const bookings = bookingsSnap.val() || {};
+    container.innerHTML = '<h4>Все бронирования</h4>';
+    for (let id in bookings) {
+      const b = bookings[id];
+      const div = document.createElement('div');
+      div.textContent = `${b.date} ${b.time} - ${b.clientName} (${b.clientPhone}), сапов: ${b.boardsCount}`;
+      container.appendChild(div);
+    }
+  });
+})();
