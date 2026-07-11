@@ -47,16 +47,13 @@
 
   // ---------- ОТЛАДОЧНЫЙ БЛОК ----------
   // Показываем окно с диагностикой при загрузке (уберите после тестирования)
-  const debugInfo = `
-    Telegram API доступен: ${!!tg}
-    userId: ${userId}
-    userName: ${userName}
-    ADMIN_IDS: ${JSON.stringify(ADMIN_IDS)}
-    isAdmin: ${isAdmin}
-    URL: ${window.location.href}
-  `;
-  alert('Отладка:\n' + debugInfo);
-  console.log(debugInfo);
+console.log('Отладка:', {
+  tgAvailable: !!tg,
+  userId,
+  userName,
+  ADMIN_IDS,
+  isAdmin
+});
   // ------------------------------------
 
   // ========== DOM элементы ==========
@@ -534,4 +531,50 @@
       container.appendChild(div);
     }
   });
+  // ========== Управление маршрутами ==========
+document.getElementById('btn-manage-routes').addEventListener('click', async () => {
+  const container = document.getElementById('admin-routes-list');
+  container.style.display = 'block';
+  container.innerHTML = '<p>Загрузка маршрутов...</p>';
+  await loadRoutesList(container);
+});
+
+async function loadRoutesList(container) {
+  const snap = await db.ref('routes').once('value');
+  const routes = snap.val() || {};
+  container.innerHTML = '';
+  for (let id in routes) {
+    const name = routes[id].name;
+    const div = document.createElement('div');
+    div.className = 'slot-item'; // используем тот же стиль
+    div.innerHTML = `
+      <div>${name}</div>
+      <button class="delete-route-btn" data-id="${id}">Удалить</button>
+    `;
+    div.querySelector('.delete-route-btn').addEventListener('click', async (e) => {
+      const routeId = e.target.dataset.id;
+      await db.ref(`routes/${routeId}`).remove();
+      loadRoutesList(container);
+    });
+    container.appendChild(div);
+  }
+
+  // Форма добавления
+  const addDiv = document.createElement('div');
+  addDiv.style.marginTop = '10px';
+  addDiv.innerHTML = `
+    <input type="text" id="new-route-name" placeholder="Название маршрута">
+    <button id="add-route-btn" class="btn-primary">Добавить</button>
+  `;
+  container.appendChild(addDiv);
+
+  document.getElementById('add-route-btn').addEventListener('click', async () => {
+    const nameInput = document.getElementById('new-route-name');
+    const name = nameInput.value.trim();
+    if (!name) return alert('Введите название');
+    await db.ref('routes').push({ name });
+    nameInput.value = '';
+    loadRoutesList(container);
+  });
+}
 })();
