@@ -11,11 +11,4 @@ const firebaseConfig = {
 
 // Инициализация Firebase
 firebase.initializeApp(firebaseConfig);
-
-// Получаем ссылку на базу данных
-const database = firebase.database();
-const newBookingRef = database.ref('bookings').push();
-newBookingRef.set(bookingData).then(() => {
-    // успешно
-});
-
+const db = firebase.database();
