@@ -11,7 +11,7 @@
     userId = tg.initDataUnsafe?.user?.id;
     userName = tg.initDataUnsafe?.user?.first_name || userName;
     // ID администраторов (замените на реальные)
-    const isAdmin = true; //через запятую добавить ID телеграмм
+    const ADMIN_IDS = [611952]; //через запятую добавить ID телеграмм
     isAdmin = ADMIN_IDS.includes(userId);
   }
 
